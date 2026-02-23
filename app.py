@@ -241,7 +241,32 @@ try:
             st.write(f"Showing **{len(filtered_df)}** whimsical classes.")
             st.divider()
 
-            for r_num, row in filtered_df.iterrows():
+            items_per_page = 20
+
+            # Calculate total pages
+            total_pages = (len(filtered_df) // items_per_page) + (
+                1 if len(filtered_df) % items_per_page > 0 else 0
+            )
+
+            # Add a page selector at the top (and bottom)
+            if total_pages > 1:
+                current_page = st.number_input(
+                    f"Page (1 of {total_pages})",
+                    min_value=1,
+                    max_value=total_pages,
+                    step=1,
+                )
+            else:
+                current_page = 1
+
+            # Calculate start and end indices for the current page
+            start_idx = (current_page - 1) * items_per_page
+            end_idx = start_idx + items_per_page
+
+            # Slice the dataframe for the current page
+            page_df = filtered_df.iloc[start_idx:end_idx]
+
+            for r_num, row in page_df.iterrows():
                 with st.container():
                     col1, col2 = st.columns([2, 1])
                     with col1:
