@@ -1,0 +1,84 @@
+Subject: Project Kick-Off – School of Dandori (Client Meeting with Arthur)
+
+Hi Team,
+
+I’m delighted to let you know that we’ve formally won the School of Dandori engagement.
+
+As you’ll see from the client introduction pack, the School of Dandori is a small but ambitious organisation founded in 2017 to help adults reclaim their time and wellbeing. Ironically — and perhaps inevitably — they are now exploring how Artificial Intelligence might help them scale their operations.
+
+You have been assigned to the initial discovery phase of the project.
+
+🧩 Your Task
+
+Your first step is to meet with Arthur Ingham, who built and manages the School’s technology platform.
+
+Arthur is technical, pragmatic, and deeply invested in the ethos of Dandori. While the founders have historically resisted Generative AI, they now believe it may be necessary to address several operational challenges as they scale.
+
+Your role in this session is not to propose solutions immediately.
+
+Your role is to:
+* Understand the business model
+* Identify the current challenges
+* Explore pain points
+* Clarify constraints
+* Uncover opportunities
+* Assess their appetite and readiness for AI adoption
+
+🎯 What to Expect in the Meeting
+
+This is a discovery conversation, not a technical deep dive (yet).
+
+The aim is to find out the sort of AI solutions he has in mind. 
+
+👥 Before the Meeting
+
+As a project team, you should:
+
+Review the client background carefully.
+
+Discuss as a group:
+
+What do we already know?
+What assumptions might we be making?
+What risks can we foresee?
+
+Prepare a structured list of questions you intend to ask.
+
+Think about:
+
+Business objectives
+Stakeholders
+Data availability
+User journeys
+Constraints (ethical, technical, financial)
+Success criteria
+Measures of value
+
+Avoid jumping straight to “We can build a chatbot.”
+
+Discovery first. Solutions later.
+
+🧠 After the Meeting
+
+Following your conversation with Arthur, you will:
+Document the key challenges identified
+Summarise stakeholder needs
+Highlight risks or constraints
+Propose potential directions (at a high level)
+Agree internally on next steps
+
+You will then reconvene to outline your proposed approach to me.
+
+This is an opportunity to demonstrate:
+
+Strong stakeholder engagement
+Clear questioning techniques
+Critical thinking
+Structured requirement gathering
+Commercial awareness
+
+
+Looking forward to seeing how you shape this.
+
+Best,
+Manny McManager
