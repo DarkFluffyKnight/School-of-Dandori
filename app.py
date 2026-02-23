@@ -45,6 +45,14 @@ def get_all_unique_skills(df):
             all_skills.update(skills_list)
     return sorted(list(all_skills))
 
+def get_all_instructors(df):
+    return sorted(df["instructor"].unique().tolist())
+
+def get_all_categories(df):
+    return sorted(df["course_type"].unique().tolist())
+
+def get_all_locations(df):
+    return sorted(df["location"].unique().tolist())
 
 @st.cache_data
 def load_and_clean_data():
@@ -62,6 +70,12 @@ try:
     # --- SESSION STATE INITIALIZATION ---
     if "selected_skills" not in st.session_state:
         st.session_state.selected_skills = []
+    if "selected_instructor" not in st.session_state:
+        st.session_state.selected_instructor = []
+    if "selected_category" not in st.session_state:
+        st.session_state.selected_category = []
+    if "selected_location" not in st.session_state:
+        st.session_state.selected_location = []
 
     # --- Sidebar ---
     st.sidebar.title("🌿 Dandori Menu")
@@ -78,43 +92,86 @@ try:
         value=(df["cost"].min(), df["cost"].max()),
     )
 
-    selected_loc = st.sidebar.selectbox(
+    # Clear Filters Button
+    if st.sidebar.button("Clear All Filters", use_container_width=True):
+        st.session_state.selected_skills = []
+        st.session_state.selected_instructor = []
+        st.session_state.selected_category = []
+        st.session_state.selected_location = []
+        st.rerun()
+
+    all_locations = get_all_locations(df)
+    selected_location = st.sidebar.multiselect(
         "Location:",
-        options=["All Locations"] + sorted(df["location"].unique().tolist()),
+        options=all_locations,
+        default=st.session_state.selected_location,
+        help="Select a location to filder classes"
     )
-    selected_type = st.sidebar.selectbox(
+
+    all_categories = get_all_categories(df)
+    selected_category = st.sidebar.multiselect(
         "Course Category:",
-        options=["All Categories"] + sorted(df["course_type"].unique().tolist()),
+        options=all_categories,
+        default=st.session_state.selected_category,
+        help="Select a category to filter classes"
     )
-    # ---------------------- SELECT INSTRUCTOR ---------------------
-    selected_instructor = st.sidebar.selectbox(
+
+    # # ---------------------- SELECT INSTRUCTOR ---------------------
+    all_instructors = get_all_instructors(df)
+    selected_instructor = st.sidebar.multiselect(
         "Course Instructor:",
-        options=["All Instructors"] + sorted(df["instructor"].unique().tolist()),
+        options = all_instructors,
+        default=st.session_state.selected_instructor,
+        help="Select an instructor to filter classes"
     )
 
     # --- UPDATED SKILLS MULTISELECT ---
     all_skills = get_all_unique_skills(df)
     selected_skills = st.sidebar.multiselect(
-        "🎯 Skills Developed",
+        "Skills Developed:",
         options=all_skills,
         default=st.session_state.selected_skills,
-        help="Select one or more skills to filter classes",
+        help="Select a skills to filter classes",
     )
+
 
     # Sync multiselect with session state
     if selected_skills != st.session_state.selected_skills:
         st.session_state.selected_skills = selected_skills
         st.rerun()  # Ensure the UI updates immediately with the state change
+    if selected_instructor != st.session_state.selected_instructor:
+        st.session_state.selected_instructor = selected_instructor
+        st.rerun() 
+    if selected_category != st.session_state.selected_category:
+        st.session_state.selected_category = selected_category
+        st.rerun() 
+    if selected_location != st.session_state.selected_location:
+        st.session_state.selected_location = selected_location
+        st.rerun()
 
     # --- Filter Logic ---
     filtered_df = df.copy()
-    if selected_loc != "All Locations":
-        filtered_df = filtered_df[filtered_df["location"] == selected_loc]
-    if selected_type != "All Categories":
-        filtered_df = filtered_df[filtered_df["course_type"] == selected_type]
+
+    if st.session_state.selected_location:
+        filtered_df = filtered_df[
+            filtered_df["location"].apply(
+                lambda l: any(loc in l for loc in st.session_state.selected_location)
+            )
+        ]
+
+    if st.session_state.selected_category:
+        filtered_df = filtered_df[
+            filtered_df["course_type"].apply(
+                lambda c: any(cat in c for cat in st.session_state.selected_category)
+            )
+        ]
     # ---------------------- FILTER INSTRUCTOR ---------------------
-    if selected_instructor != "All Instructors":
-        filtered_df = filtered_df[filtered_df["instructor"] == selected_instructor]
+    if st.session_state.selected_instructor:
+        filtered_df = filtered_df[
+            filtered_df["instructor"].apply(
+               lambda i: any(instructor in i for instructor in st.session_state.selected_instructor)
+            )
+        ]
     if st.session_state.selected_skills:
         filtered_df = filtered_df[
             filtered_df["skills_developed"].apply(
