@@ -114,7 +114,7 @@ try:
         filtered_df = filtered_df[filtered_df["course_type"] == selected_type]
     # ---------------------- FILTER INSTRUCTOR ---------------------
     if selected_instructor != "All Instructors":
-        filtered_df = filtered_df[filtered_df["instructor"] == selected_type]
+        filtered_df = filtered_df[filtered_df["instructor"] == selected_instructor]
     if st.session_state.selected_skills:
         filtered_df = filtered_df[
             filtered_df["skills_developed"].apply(
