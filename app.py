@@ -146,13 +146,26 @@ try:
                     else:
                         st.write(desc)
 
-                    skills_html = "".join(
-                        [
-                            f'<span class="skill-tag">{s}</span>'
-                            for s in row["skills_developed"]
-                        ]
-                    )
-                    st.markdown(skills_html, unsafe_allow_html=True)
+                    st.write("**Skills:**")
+                    cols = st.columns(len(row['skills_developed']))
+                    for idx, skill in enumerate(row['skills_developed']):
+                        with cols[idx]:
+                            # Check if skill is already selected
+                            is_selected = skill in st.session_state.selected_skills
+                            button_type = "primary" if is_selected else "secondary"
+                            
+                            if st.button(
+                                skill, 
+                                key=f"skill_{row['class_id']}_{idx}",
+                                type=button_type,
+                                use_container_width=True
+                            ):
+                                # Toggle skill selection
+                                if skill in st.session_state.selected_skills:
+                                    st.session_state.selected_skills.remove(skill)
+                                else:
+                                    st.session_state.selected_skills.append(skill)
+                                st.rerun()
 
                 with col2:
                     st.markdown(
