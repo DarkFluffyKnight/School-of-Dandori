@@ -79,12 +79,17 @@ try:
     )
 
     selected_loc = st.sidebar.selectbox(
-        "Select Location:",
+        "Location:",
         options=["All Locations"] + sorted(df["location"].unique().tolist()),
     )
     selected_type = st.sidebar.selectbox(
         "Course Category:",
         options=["All Categories"] + sorted(df["course_type"].unique().tolist()),
+    )
+    # ---------------------- SELECT INSTRUCTOR ---------------------
+    selected_instructor = st.sidebar.selectbox(
+        "Course Instructor:",
+        options=["All Instructors"] + sorted(df["instructor"].unique().tolist()),
     )
 
     # --- UPDATED SKILLS MULTISELECT ---
@@ -107,6 +112,9 @@ try:
         filtered_df = filtered_df[filtered_df["location"] == selected_loc]
     if selected_type != "All Categories":
         filtered_df = filtered_df[filtered_df["course_type"] == selected_type]
+    # ---------------------- FILTER INSTRUCTOR ---------------------
+    if selected_instructor != "All Instructors":
+        filtered_df = filtered_df[filtered_df["instructor"] == selected_type]
     if st.session_state.selected_skills:
         filtered_df = filtered_df[
             filtered_df["skills_developed"].apply(
@@ -147,18 +155,18 @@ try:
                         st.write(desc)
 
                     st.write("**Skills:**")
-                    cols = st.columns(len(row['skills_developed']))
-                    for idx, skill in enumerate(row['skills_developed']):
+                    cols = st.columns(len(row["skills_developed"]))
+                    for idx, skill in enumerate(row["skills_developed"]):
                         with cols[idx]:
                             # Check if skill is already selected
                             is_selected = skill in st.session_state.selected_skills
                             button_type = "primary" if is_selected else "secondary"
-                            
+
                             if st.button(
-                                skill, 
+                                skill,
                                 key=f"skill_{row['class_id']}_{idx}",
                                 type=button_type,
-                                use_container_width=True
+                                use_container_width=True,
                             ):
                                 # Toggle skill selection
                                 if skill in st.session_state.selected_skills:
