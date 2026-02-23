@@ -96,7 +96,9 @@ def extract_course_data(path):
 
         data = {
             "class_id": (
-                re.search(r"CLASS_\d+", full_text).group(0)
+                re.search(r"CLASS_\d+", full_text).group(
+                    0
+                )  # pyright: ignore[reportOptionalMemberAccess]
                 if re.search(r"CLASS_\d+", full_text)
                 else None
             ),  #
@@ -105,12 +107,13 @@ def extract_course_data(path):
             "course_type": course_type,
             "location": location,
             "cost": cost,
-            # Objectives and Materials (Same logic as before)
+            # Objectives and Materials (Regex)
             "learning_objectives": [
                 re.sub(r"^•\s*", "", l)
                 for l in lines
                 if "•" in l and lines.index(l) < lines.index("Provided Materials")
-            ],
+            ],  # Learning objectivs and provided materials are the only
+            # things with bullet points and separated by "Provided Materials"
             "provided_materials": [
                 re.sub(r"^•\s*", "", l)
                 for l in lines
@@ -134,13 +137,13 @@ def process_pdf_folder(folder_path):
     """Iterates through a folder and returns a consolidated DataFrame."""
     all_data = []
 
-    # List all PDF files in the directory
+    # List all PDF files in the directory, filter by name
     files = [
         f
         for f in os.listdir(folder_path)
         if f.endswith(".pdf") and f.startswith("class_")
     ]
-
+    # Load data from each one
     for filename in files:
         path = os.path.join(folder_path, filename)
         print(f"Processing: {filename}...")
