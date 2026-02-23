@@ -138,7 +138,7 @@ try:
         st.write(f"Showing **{len(filtered_df)}** whimsical classes.")
         st.divider()
 
-        for _, row in filtered_df.iterrows():
+        for r_num, row in filtered_df.iterrows():
             with st.container():
                 col1, col2 = st.columns([2, 1])
                 with col1:
@@ -164,7 +164,7 @@ try:
 
                             if st.button(
                                 skill,
-                                key=f"skill_{row['class_id']}_{idx}",
+                                key=f"skill_{r_num}_{idx}",
                                 type=button_type,
                                 use_container_width=True,
                             ):
@@ -185,7 +185,7 @@ try:
                     with st.expander("Learning Objectives"):
                         for obj in row["learning_objectives"]:
                             st.write(f"• {obj}")
-                    st.button("Book Now", key=f"btn_{row['class_id']}")
+                    st.button("Book Now", key=f"btn_{r_num}")
                 st.divider()
 
     else:
