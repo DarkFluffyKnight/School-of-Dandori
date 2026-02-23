@@ -176,8 +176,10 @@ try:
                                 st.rerun()
 
                 with col2:
+                    # Format price as 2dp
+                    cost = "£{:.2f}".format(row["cost"])
                     st.markdown(
-                        f'<p class="price-badge">{row["cost"]}</p>',
+                        f'<p class="price-badge">{cost}</p>',
                         unsafe_allow_html=True,
                     )
                     with st.expander("Learning Objectives"):
