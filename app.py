@@ -1,11 +1,27 @@
 import streamlit as st
 import pandas as pd
 import ast
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+# --- CONFIGURATION & API SETUP ---
+# For Google Cloud deployment, you can set this in the Cloud Console.
+# For local testing, ensure your key is available.
+
+load_dotenv()
+
+api_key = os.getenv("GEMINI_API_KEY")
+
+if api_key:
+    genai.configure(api_key=api_key)
+else:
+    st.error("Missing API Key! Please check your .env file.")
 
 # Page Setup
 st.set_page_config(page_title="School of Dandori | Course Portal", layout="wide")
 
-# Visual Styling
+# Visual Styling (Kept identical to your version)
 st.markdown(
     """
     <style>
@@ -30,7 +46,7 @@ st.markdown(
 )
 
 
-# --- Helper Functions ---
+# --- Helper Functions (Kept identical) ---
 def parse_list(data):
     try:
         return ast.literal_eval(data)
@@ -45,22 +61,72 @@ def get_all_unique_skills(df):
             all_skills.update(skills_list)
     return sorted(list(all_skills))
 
+
 def get_all_instructors(df):
     return sorted(df["instructor"].unique().tolist())
+
 
 def get_all_categories(df):
     return sorted(df["course_type"].unique().tolist())
 
+
 def get_all_locations(df):
     return sorted(df["location"].unique().tolist())
+
 
 @st.cache_data
 def load_and_clean_data():
     df = pd.read_csv("course_data.csv")
-    df["cost"] = df["cost"].apply(lambda c: pd.to_numeric(c[1:]))
+    df["cost"] = df["cost"].apply(
+        lambda c: pd.to_numeric(str(c).replace("£", "").replace(",", ""))
+    )
     for col in ["learning_objectives", "provided_materials", "skills_developed"]:
         df[col] = df[col].apply(parse_list)
     return df
+
+
+# --- RAG CHATBOT LOGIC (New) ---
+def get_chatbot_response(user_query, df):
+    """Retrieves relevant courses and generates a response via Gemini."""
+    try:
+        # 1. Retrieval Logic (Search)
+        # We search course name and description for matches
+        mask = df["course_name"].str.contains(user_query, case=False, na=False) | df[
+            "course_description"
+        ].str.contains(user_query, case=False, na=False)
+        matches = df[mask].head(3)
+
+        context = ""
+        if not matches.empty:
+            context = "Here are the most relevant courses from our catalog:\n"
+            for _, row in matches.iterrows():
+                context += f"- {row['course_name']} in {row['location']}. Cost: £{row['cost']}. Description: {row['course_description']}\n"
+
+        # 2. Model Initialization
+        # Use the full model path from available models
+        model = genai.GenerativeModel("models/gemini-2.5-flash")
+
+        prompt = f"""You are the School of Dandori Assistant. 
+        Your goal is to help users find courses. 
+        
+        DATA CONTEXT:
+        {context if context else 'No specific matches found in the catalog.'}
+        
+        USER QUESTION:
+        {user_query}
+        
+        INSTRUCTIONS:
+        - If courses are found in the DATA CONTEXT, describe them.
+        - If no courses are found, suggest they check our 'Discovery Gallery' and filters.
+        - Maintain a whimsical, helpful tone."""
+
+        # 3. Generate content
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        # If it fails, we want to see the specific error
+        return f"Dandori Error: {str(e)}"
 
 
 # --- MAIN APP ---
@@ -76,8 +142,10 @@ try:
         st.session_state.selected_category = []
     if "selected_location" not in st.session_state:
         st.session_state.selected_location = []
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    # --- Sidebar ---
+    # --- Sidebar (Kept identical) ---
     st.sidebar.title("🌿 Dandori Menu")
     view_mode = st.sidebar.radio("View Mode:", ["Discovery Gallery", "Data Table View"])
     st.sidebar.divider()
@@ -87,12 +155,11 @@ try:
 
     slider_price = st.sidebar.slider(
         label="Price",
-        min_value=df["cost"].min(),
-        max_value=df["cost"].max(),
-        value=(df["cost"].min(), df["cost"].max()),
+        min_value=float(df["cost"].min()),
+        max_value=float(df["cost"].max()),
+        value=(float(df["cost"].min()), float(df["cost"].max())),
     )
 
-    # Clear Filters Button
     if st.sidebar.button("Clear All Filters", use_container_width=True):
         st.session_state.selected_skills = []
         st.session_state.selected_instructor = []
@@ -100,77 +167,53 @@ try:
         st.session_state.selected_location = []
         st.rerun()
 
-    all_locations = get_all_locations(df)
     selected_location = st.sidebar.multiselect(
         "Location:",
-        options=all_locations,
+        options=get_all_locations(df),
         default=st.session_state.selected_location,
-        help="Select a location to filder classes"
     )
-
-    all_categories = get_all_categories(df)
     selected_category = st.sidebar.multiselect(
         "Course Category:",
-        options=all_categories,
+        options=get_all_categories(df),
         default=st.session_state.selected_category,
-        help="Select a category to filter classes"
     )
-
-    # # ---------------------- SELECT INSTRUCTOR ---------------------
-    all_instructors = get_all_instructors(df)
     selected_instructor = st.sidebar.multiselect(
         "Course Instructor:",
-        options = all_instructors,
+        options=get_all_instructors(df),
         default=st.session_state.selected_instructor,
-        help="Select an instructor to filter classes"
     )
-
-    # --- UPDATED SKILLS MULTISELECT ---
-    all_skills = get_all_unique_skills(df)
     selected_skills = st.sidebar.multiselect(
         "Skills Developed:",
-        options=all_skills,
+        options=get_all_unique_skills(df),
         default=st.session_state.selected_skills,
-        help="Select a skills to filter classes",
     )
 
-
-    # Sync multiselect with session state
-    if selected_skills != st.session_state.selected_skills:
+    # State Sync
+    if (
+        selected_skills != st.session_state.selected_skills
+        or selected_instructor != st.session_state.selected_instructor
+        or selected_category != st.session_state.selected_category
+        or selected_location != st.session_state.selected_location
+    ):
         st.session_state.selected_skills = selected_skills
-        st.rerun()  # Ensure the UI updates immediately with the state change
-    if selected_instructor != st.session_state.selected_instructor:
         st.session_state.selected_instructor = selected_instructor
-        st.rerun() 
-    if selected_category != st.session_state.selected_category:
         st.session_state.selected_category = selected_category
-        st.rerun() 
-    if selected_location != st.session_state.selected_location:
         st.session_state.selected_location = selected_location
         st.rerun()
 
-    # --- Filter Logic ---
+    # --- Filter Logic (Kept identical) ---
     filtered_df = df.copy()
-
     if st.session_state.selected_location:
         filtered_df = filtered_df[
-            filtered_df["location"].apply(
-                lambda l: any(loc in l for loc in st.session_state.selected_location)
-            )
+            filtered_df["location"].isin(st.session_state.selected_location)
         ]
-
     if st.session_state.selected_category:
         filtered_df = filtered_df[
-            filtered_df["course_type"].apply(
-                lambda c: any(cat in c for cat in st.session_state.selected_category)
-            )
+            filtered_df["course_type"].isin(st.session_state.selected_category)
         ]
-    # ---------------------- FILTER INSTRUCTOR ---------------------
     if st.session_state.selected_instructor:
         filtered_df = filtered_df[
-            filtered_df["instructor"].apply(
-               lambda i: any(instructor in i for instructor in st.session_state.selected_instructor)
-            )
+            filtered_df["instructor"].isin(st.session_state.selected_instructor)
         ]
     if st.session_state.selected_skills:
         filtered_df = filtered_df[
@@ -183,104 +226,119 @@ try:
             filtered_df["course_name"].str.contains(search_query, case=False)
             | filtered_df["course_description"].str.contains(search_query, case=False)
         ]
-
     filtered_df = filtered_df[
         (filtered_df["cost"] <= slider_price[1])
         & (filtered_df["cost"] >= slider_price[0])
     ]
 
-    # --- Main Content Display ---
-    if view_mode == "Discovery Gallery":
-        st.title("School of Dandori")
-        st.write(f"Showing **{len(filtered_df)}** whimsical classes.")
-        st.divider()
+    # --- TABS INTERFACE ---
+    # We use Tabs to keep the old UI perfectly preserved on the first tab.
+    tab_portal, tab_ai = st.tabs(["🏛️ Course Portal", "🤖 Dandori Assistant"])
 
-        for r_num, row in filtered_df.iterrows():
-            with st.container():
-                col1, col2 = st.columns([2, 1])
-                with col1:
-                    st.subheader(row["course_name"])
-                    st.write(f"📍 **{row['location']}** | 👤 **{row['instructor']}**")
+    with tab_portal:
+        if view_mode == "Discovery Gallery":
+            st.title("School of Dandori")
+            st.write(f"Showing **{len(filtered_df)}** whimsical classes.")
+            st.divider()
 
-                    # Truncated description
-                    desc = row["course_description"]
-                    if len(desc) > 150:
-                        st.write(f"{desc[:150]}...")
-                        with st.expander("Read full description"):
+            for r_num, row in filtered_df.iterrows():
+                with st.container():
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        st.subheader(row["course_name"])
+                        st.write(
+                            f"📍 **{row['location']}** | 👤 **{row['instructor']}**"
+                        )
+                        desc = row["course_description"]
+                        if len(desc) > 150:
+                            st.write(f"{desc[:150]}...")
+                            with st.expander("Read full description"):
+                                st.write(desc)
+                        else:
                             st.write(desc)
-                    else:
-                        st.write(desc)
 
-                    st.write("**Skills:**")
-                    cols = st.columns(len(row["skills_developed"]))
-                    for idx, skill in enumerate(row["skills_developed"]):
-                        with cols[idx]:
-                            # Check if skill is already selected
-                            is_selected = skill in st.session_state.selected_skills
-                            button_type = "primary" if is_selected else "secondary"
+                        st.write("**Skills:**")
+                        skill_cols = st.columns(min(len(row["skills_developed"]), 5))
+                        for idx, skill in enumerate(row["skills_developed"]):
+                            with skill_cols[idx % 5]:
+                                is_selected = skill in st.session_state.selected_skills
+                                if st.button(
+                                    skill,
+                                    key=f"sk_{r_num}_{idx}",
+                                    type="primary" if is_selected else "secondary",
+                                    use_container_width=True,
+                                ):
+                                    if is_selected:
+                                        st.session_state.selected_skills.remove(skill)
+                                    else:
+                                        st.session_state.selected_skills.append(skill)
+                                    st.rerun()
 
-                            if st.button(
-                                skill,
-                                key=f"skill_{r_num}_{idx}",
-                                type=button_type,
-                                use_container_width=True,
-                            ):
-                                # Toggle skill selection
-                                if skill in st.session_state.selected_skills:
-                                    st.session_state.selected_skills.remove(skill)
-                                else:
-                                    st.session_state.selected_skills.append(skill)
-                                st.rerun()
-
-                with col2:
-                    # Format price as 2dp
-                    cost = "£{:.2f}".format(row["cost"])
-                    st.markdown(
-                        f'<p class="price-badge">{cost}</p>',
-                        unsafe_allow_html=True,
-                    )
-                    with st.expander("Learning Objectives"):
-                        for obj in row["learning_objectives"]:
-                            st.write(f"• {obj}")
-                    st.button("Book Now", key=f"btn_{r_num}")
-                st.divider()
-
-    else:
-        st.title("Admin Data View")
-        # Apply the display formatting and headers you requested previously
-        display_df = filtered_df[
-            [
-                "class_id",
-                "course_name",
-                "instructor",
-                "location",
-                "course_type",
-                "cost",
-                "skills_developed",
-                "course_description",
+                    with col2:
+                        st.markdown(
+                            f'<p class="price-badge">£{row["cost"]:.2f}</p>',
+                            unsafe_allow_html=True,
+                        )
+                        with st.expander("Learning Objectives"):
+                            for obj in row["learning_objectives"]:
+                                st.write(f"• {obj}")
+                        st.button("Book Now", key=f"btn_{r_num}")
+                    st.divider()
+        else:
+            st.title("Admin Data View")
+            display_df = filtered_df[
+                [
+                    "course_name",
+                    "instructor",
+                    "location",
+                    "course_type",
+                    "cost",
+                    "skills_developed",
+                    "course_description",
+                ]
             ]
-        ]
-        st.dataframe(
-            display_df,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "class_id": "ID",
-                "course_name": "Course Name",
-                "instructor": "Instructor",
-                "course_type": "Category",
-                "location": "Location",
-                "cost": st.column_config.NumberColumn("Cost", format="£ %.2f"),
-                "skills_developed": "Skills",
-                "course_description": "Full Description",
-            },
-        )
-        st.download_button(
-            "📥 Download Filtered CSV",
-            data=filtered_df.to_csv(index=False),
-            file_name="dandori_export.csv",
-            mime="text/csv",
-        )
+            st.dataframe(
+                display_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "class_id": "ID",
+                    "course_name": "Course Name",
+                    "instructor": "Instructor",
+                    "course_type": "Category",
+                    "location": "Location",
+                    "cost": st.column_config.NumberColumn("Cost", format="£ %.2f"),
+                    "skills_developed": "Skills",
+                    "course_description": "Full Description",
+                },
+            )
+            st.download_button(
+                "📥 Download Filtered CSV",
+                data=filtered_df.to_csv(index=False),
+                file_name="dandori_export.csv",
+                mime="text/csv",
+            )
+
+    with tab_ai:
+        st.title("🤖 Chat with Arthur's Assistant")
+        st.write("Ask me anything about our curriculum!")
+
+        # Display chat history
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # Chat Input
+        if prompt := st.chat_input("I'm looking for a baking class in York..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    response = get_chatbot_response(prompt, df)
+                    st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
 except FileNotFoundError:
-    st.error("Missing Data: Run your extraction script first!")
+    st.error("Missing Data: Please ensure course_data.csv is present.")
