@@ -3,4 +3,4 @@ pandas
 chromadb
 requests
 openai
-google
+google-generativeai
