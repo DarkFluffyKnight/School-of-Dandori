@@ -252,6 +252,7 @@ def query_llm_with_rag(
     chat_client: OpenAI,
     collection: chromadb.Collection,
     query: str,
+    history: dict,
     model: str = "google/gemini-2.0-flash-001",
     n_results: int = 10,
     system_prompt: Optional[str] = None,
@@ -259,6 +260,7 @@ def query_llm_with_rag(
     max_tokens: Optional[int] = None,
     where: Optional[Dict[str, Any]] = None,
     where_document: Optional[Dict[str, Any]] = None,
+    max_history_messages: int = 6,
 ) -> str:
     """
     Query an LLM with RAG context from the collection.
@@ -296,6 +298,14 @@ def query_llm_with_rag(
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
+
+    # Add limied history (last n messages onlu)
+    if history:
+        # Get the last N messages
+        recent_history = history[-max_history_messages:] if len(history) > max_history_messages else history
+        messages.extend(recent_history)
+    
+    # Add current query
     messages.append({"role": "user", "content": embedded_query})
 
     # Build request parameters
