@@ -157,10 +157,14 @@ def process_pdf_folder(folder_path):
     return pd.DataFrame(all_data)
 
 
-def main(path="./course_pdfs"):
+def get_data_make_csv(path):
     df = process_pdf_folder(path)
     print("Saving to course_data.csv")
     df.to_csv("course_data.csv", index=False)
+
+
+def main(path="./course_pdfs"):
+    get_data_make_csv(path)
 
 
 if __name__ == "__main__":
