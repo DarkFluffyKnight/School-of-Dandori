@@ -4,6 +4,7 @@ import ast
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+import utils.rag as rag
 
 # --- CONFIGURATION & API SETUP ---
 # For Google Cloud deployment, you can set this in the Cloud Console.
@@ -11,12 +12,21 @@ import google.generativeai as genai
 
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
-
-if api_key:
-    genai.configure(api_key=api_key)
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+if gemini_api_key:
+    genai.configure(api_key=gemini_api_key)
 else:
-    st.error("Missing API Key! Please check your .env file.")
+    st.error("Missing Gemini API Key! Please check your .env file.")
+
+
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    st.error("Missing OpenAI API Key! Please check your .env file.")
+
+openai_url = os.getenv("ENDPOINT")
+if not openai_url:
+    openai_url = "https://openrouter.ai/api/v1"
+
 
 # Page Setup
 st.set_page_config(page_title="School of Dandori | Course Portal", layout="wide")
@@ -133,6 +143,14 @@ def get_chatbot_response(user_query, df):
 try:
     df = load_and_clean_data()
 
+    chunks = rag.generate_chunks_from_dataframe(df=df)
+    collection, client = rag.create_collection(
+        collection_name="pdf_data",
+        api_key=openai_api_key,
+        base_url=openai_url,
+    )
+    rag.add_chunks_to_collection(collection=collection, chunks=chunks)
+
     # --- SESSION STATE INITIALIZATION ---
     if "selected_skills" not in st.session_state:
         st.session_state.selected_skills = []
@@ -149,35 +167,50 @@ try:
 
     # --- Sidebar (Kept identical) ---
     st.sidebar.title("🌿 Dandori Menu")
-    
+
     # Favorites section at the top
-    with st.sidebar.expander(f"⭐ My Favorites ({len(st.session_state.favorites)})", expanded=False):
+    with st.sidebar.expander(
+        f"⭐ My Favorites ({len(st.session_state.favorites)})", expanded=False
+    ):
         if st.session_state.favorites:
             for fav_id in st.session_state.favorites:
-                fav_course = df[df['class_id'] == fav_id]
+                fav_course = df[df["class_id"] == fav_id]
                 if not fav_course.empty:
-                    course_name = fav_course.iloc[0]['course_name']
+                    course_name = fav_course.iloc[0]["course_name"]
                     col1, col2 = st.columns([4, 1])
                     with col1:
                         st.write(f"• {course_name}")
                     with col2:
-                        if st.button("❌", key=f"remove_fav_{fav_id}", help="Remove from favorites"):
+                        if st.button(
+                            "❌",
+                            key=f"remove_fav_{fav_id}",
+                            help="Remove from favorites",
+                        ):
                             st.session_state.favorites.remove(fav_id)
                             st.rerun()
         else:
             st.write("No favorites yet. Click the ⭐ button on courses to add them!")
-    
+
     st.sidebar.divider()
-    view_mode = st.sidebar.radio("View Mode:", ["Discovery Gallery", "Data Table View", "My Favorites"])
+    view_mode = st.sidebar.radio(
+        "View Mode:", ["Discovery Gallery", "Data Table View", "My Favorites"]
+    )
     st.sidebar.divider()
 
     st.sidebar.subheader("Filter Your Search")
     search_query = st.sidebar.text_input("Search keywords:", "")
-    
+
     # Sort by dropdown
     sort_by = st.sidebar.selectbox(
         "Sort by:",
-        options=["Course Name (A-Z)", "Course Name (Z-A)", "Price (Low to High)", "Price (High to Low)", "Location (A-Z)", "Instructor (A-Z)"]
+        options=[
+            "Course Name (A-Z)",
+            "Course Name (Z-A)",
+            "Price (Low to High)",
+            "Price (High to Low)",
+            "Location (A-Z)",
+            "Instructor (A-Z)",
+        ],
     )
 
     slider_price = st.sidebar.slider(
@@ -257,7 +290,7 @@ try:
         (filtered_df["cost"] <= slider_price[1])
         & (filtered_df["cost"] >= slider_price[0])
     ]
-    
+
     # Apply sorting
     if sort_by == "Course Name (A-Z)":
         filtered_df = filtered_df.sort_values("course_name", ascending=True)
@@ -279,12 +312,12 @@ try:
     with tab_portal:
         if view_mode == "My Favorites":
             st.title("⭐ My Favorite Courses")
-            
+
             if st.session_state.favorites:
-                favorites_df = df[df['class_id'].isin(st.session_state.favorites)]
+                favorites_df = df[df["class_id"].isin(st.session_state.favorites)]
                 st.write(f"You have **{len(favorites_df)}** favorite courses.")
                 st.divider()
-                
+
                 for r_num, row in favorites_df.iterrows():
                     with st.container():
                         col1, col2 = st.columns([2, 1])
@@ -302,10 +335,14 @@ try:
                                 st.write(desc)
 
                             st.write("**Skills:**")
-                            skill_cols = st.columns(min(len(row["skills_developed"]), 5))
+                            skill_cols = st.columns(
+                                min(len(row["skills_developed"]), 5)
+                            )
                             for idx, skill in enumerate(row["skills_developed"]):
                                 with skill_cols[idx % 5]:
-                                    is_selected = skill in st.session_state.selected_skills
+                                    is_selected = (
+                                        skill in st.session_state.selected_skills
+                                    )
                                     if st.button(
                                         skill,
                                         key=f"fav_sk_{r_num}_{idx}",
@@ -313,9 +350,13 @@ try:
                                         use_container_width=True,
                                     ):
                                         if is_selected:
-                                            st.session_state.selected_skills.remove(skill)
+                                            st.session_state.selected_skills.remove(
+                                                skill
+                                            )
                                         else:
-                                            st.session_state.selected_skills.append(skill)
+                                            st.session_state.selected_skills.append(
+                                                skill
+                                            )
                                         st.rerun()
 
                         with col2:
@@ -326,18 +367,24 @@ try:
                             with st.expander("Learning Objectives"):
                                 for obj in row["learning_objectives"]:
                                     st.write(f"• {obj}")
-                            
+
                             col_book, col_unfav = st.columns(2)
                             with col_book:
                                 st.button("Book Now", key=f"fav_btn_{r_num}")
                             with col_unfav:
-                                if st.button("💔", key=f"unfav_{r_num}", help="Remove from favorites"):
-                                    st.session_state.favorites.remove(row['class_id'])
+                                if st.button(
+                                    "💔",
+                                    key=f"unfav_{r_num}",
+                                    help="Remove from favorites",
+                                ):
+                                    st.session_state.favorites.remove(row["class_id"])
                                     st.rerun()
                         st.divider()
             else:
-                st.info("You haven't added any favorites yet. Browse the Discovery Gallery and click the ⭐ button to save courses!")
-                
+                st.info(
+                    "You haven't added any favorites yet. Browse the Discovery Gallery and click the ⭐ button to save courses!"
+                )
+
         elif view_mode == "Discovery Gallery":
             st.title("School of Dandori")
             st.write(f"Showing **{len(filtered_df)}** whimsical classes.")
@@ -409,22 +456,30 @@ try:
                         with st.expander("Learning Objectives"):
                             for obj in row["learning_objectives"]:
                                 st.write(f"• {obj}")
-                        
+
                         # Favorite button and Book button
                         col_fav, col_book = st.columns([1, 2])
                         with col_fav:
-                            is_favorite = row['class_id'] in st.session_state.favorites
-                            if st.button("⭐" if is_favorite else "☆", 
-                                       key=f"fav_toggle_{r_num}", 
-                                       help="Add to favorites" if not is_favorite else "Remove from favorites",
-                                       use_container_width=True):
+                            is_favorite = row["class_id"] in st.session_state.favorites
+                            if st.button(
+                                "⭐" if is_favorite else "☆",
+                                key=f"fav_toggle_{r_num}",
+                                help=(
+                                    "Add to favorites"
+                                    if not is_favorite
+                                    else "Remove from favorites"
+                                ),
+                                use_container_width=True,
+                            ):
                                 if is_favorite:
-                                    st.session_state.favorites.remove(row['class_id'])
+                                    st.session_state.favorites.remove(row["class_id"])
                                 else:
-                                    st.session_state.favorites.append(row['class_id'])
+                                    st.session_state.favorites.append(row["class_id"])
                                 st.rerun()
                         with col_book:
-                            st.button("Book Now", key=f"btn_{r_num}", use_container_width=True)
+                            st.button(
+                                "Book Now", key=f"btn_{r_num}", use_container_width=True
+                            )
                     st.divider()
         else:
             st.title("Admin Data View")
@@ -478,8 +533,17 @@ try:
 
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    response = get_chatbot_response(prompt, df)
-                    st.markdown(response)
+
+                    # response = get_chatbot_response(prompt, df)
+                    response = rag.format_query_results(
+                        rag.query_llm_with_rag(
+                            chat_client=client,
+                            collection=collection,
+                            query=prompt,
+                        )
+                    )
+
+                    st.markdown(response["response"])
             st.session_state.messages.append({"role": "assistant", "content": response})
 
 except FileNotFoundError:

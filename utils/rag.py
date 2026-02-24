@@ -130,7 +130,7 @@ def create_collection(
     base_url: str,
     model: str = "google/gemini-embedding-001",
     client: Optional[chromadb.Client] = None,
-) -> chromadb.Collection:
+) -> (chromadb.Collection, chromadb.Client):
     """
     Create or get a ChromaDB collection with the specified embedding function.
 
@@ -154,7 +154,7 @@ def create_collection(
         embedding_function=embedder,
     )
 
-    return collection
+    return (collection, client)
 
 
 def add_chunks_to_collection(
