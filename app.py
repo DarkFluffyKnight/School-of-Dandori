@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 import utils.rag as rag
+from openai import OpenAI
 
 # --- CONFIGURATION & API SETUP ---
 # For Google Cloud deployment, you can set this in the Cloud Console.
@@ -19,14 +20,15 @@ else:
     st.error("Missing Gemini API Key! Please check your .env file.")
 
 
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
+openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+if not openrouter_api_key:
     st.error("Missing OpenAI API Key! Please check your .env file.")
 
-openai_url = os.getenv("ENDPOINT")
-if not openai_url:
-    openai_url = "https://openrouter.ai/api/v1"
+endpoint = os.getenv("ENDPOINT")
+if not endpoint:
+    endpoint = "https://openrouter.ai/api/v1"
 
+chat_client = OpenAI(api_key=openrouter_api_key, base_url=endpoint)
 
 # Page Setup
 st.set_page_config(page_title="School of Dandori | Course Portal", layout="wide")
@@ -144,10 +146,10 @@ try:
     df = load_and_clean_data()
 
     chunks = rag.generate_chunks_from_dataframe(df=df)
-    collection, client = rag.create_collection(
+    collection = rag.create_collection(
         collection_name="pdf_data",
-        api_key=openai_api_key,
-        base_url=openai_url,
+        api_key=openrouter_api_key,
+        base_url=endpoint,
     )
     rag.add_chunks_to_collection(collection=collection, chunks=chunks)
 
@@ -535,15 +537,13 @@ try:
                 with st.spinner("Thinking..."):
 
                     # response = get_chatbot_response(prompt, df)
-                    response = rag.format_query_results(
-                        rag.query_llm_with_rag(
-                            chat_client=client,
-                            collection=collection,
-                            query=prompt,
-                        )
+                    response = rag.query_llm_with_rag(
+                        chat_client=chat_client,
+                        collection=collection,
+                        query=prompt,
                     )
 
-                    st.markdown(response["response"])
+                    st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
 
 except FileNotFoundError:

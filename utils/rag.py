@@ -115,7 +115,7 @@ def generate_chunks_from_dataframe(
                 "instructor": instructor,
                 "course_type": course_type,
                 "location": location,
-                "cost": float(cost[1:]) if cost else None,
+                "cost": float(cost) if cost else None,
                 "source": f"{id_prefix}_db",
             },
         }
@@ -130,7 +130,7 @@ def create_collection(
     base_url: str,
     model: str = "google/gemini-embedding-001",
     client: Optional[chromadb.Client] = None,
-) -> (chromadb.Collection, chromadb.Client):
+) -> chromadb.Collection:
     """
     Create or get a ChromaDB collection with the specified embedding function.
 
@@ -154,7 +154,7 @@ def create_collection(
         embedding_function=embedder,
     )
 
-    return (collection, client)
+    return collection
 
 
 def add_chunks_to_collection(
@@ -217,7 +217,7 @@ def format_query_results(
     results: Dict[str, Any], include_distances: bool = True
 ) -> List[Dict[str, Any]]:
     """
-    Format query results into a more readable structure.
+    Format collection query results into a more readable structure.
 
     Args:
         results: Raw results from collection.query()
