@@ -41,6 +41,24 @@ chat_client = OpenAI(api_key=openrouter_api_key, base_url=endpoint)
 # Page Setup
 st.set_page_config(page_title="School of Dandori | Course Portal", layout="wide")
 
+
+df = load_and_clean_data()
+
+if "collection" not in st.session_state:
+    chunks = rag.generate_chunks_from_dataframe(df=df)
+    collection = rag.create_collection(
+        collection_name="pdf_data",
+        api_key=openrouter_api_key,
+        base_url=endpoint,
+    )
+    # print(chunks[0])
+    rag.add_chunks_to_collection(collection=collection, chunks=chunks)
+    st.session_state.collection = collection
+
+if "chat_client" not in st.session_state:
+    st.session_state.chat_client = OpenAI(api_key=openrouter_api_key, base_url=endpoint)
+
+
 # Visual Styling (Kept identical to your version)
 st.markdown(
     """
@@ -114,15 +132,15 @@ def main():
     """Main app function"""
     # --- MAIN APP ---
     try:
-        df = load_and_clean_data()
+        # df = load_and_clean_data()
 
-        chunks = rag.generate_chunks_from_dataframe(df=df)
-        collection = rag.create_collection(
-            collection_name="pdf_data",
-            api_key=openrouter_api_key,
-            base_url=endpoint,
-        )
-        rag.add_chunks_to_collection(collection=collection, chunks=chunks)
+        # chunks = rag.generate_chunks_from_dataframe(df=df)
+        # collection = rag.create_collection(
+        #     collection_name="pdf_data",
+        #     api_key=openrouter_api_key,
+        #     base_url=endpoint,
+        # )
+        # rag.add_chunks_to_collection(collection=collection, chunks=chunks)
 
         # --- SESSION STATE INITIALIZATION ---
         if "selected_skills" not in st.session_state:
@@ -535,8 +553,8 @@ def main():
 
                         # response = get_chatbot_response(prompt, df)
                         response = rag.query_llm_with_rag(
-                            chat_client=chat_client,
-                            collection=collection,
+                            chat_client=st.session_state.chat_client,
+                            collection=st.session_state.collection,
                             query=prompt,
                         )
 
