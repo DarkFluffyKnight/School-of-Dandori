@@ -115,7 +115,7 @@ def generate_chunks_from_dataframe(
                 "instructor": instructor,
                 "course_type": course_type,
                 "location": location,
-                "cost": float(cost[1:]) if cost and len(cost) > 1 else 0.0,
+                "cost": float(cost[1:]) if cost else None,
                 "source": f"{id_prefix}_db",
             },
         }
