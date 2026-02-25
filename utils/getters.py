@@ -1,6 +1,13 @@
 import pandas as pd
 from ast import literal_eval
 import streamlit as st
+import os
+import json
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+api_key = os.getenv("OPENROUTER_API_KEY")
 
 """
 Functions used for getting data. Specifically, loading it from a csv and parseing it to produce the dataframe we use for displaying the courses.
@@ -95,3 +102,63 @@ def load_and_clean_data(path: str = "course_data.csv") -> pd.DataFrame:
     for col in ["learning_objectives", "provided_materials", "skills_developed"]:
         df[col] = df[col].apply(parse_list)
     return df
+
+def clean_query(user_query: str):
+    """
+    Cleans user query and creates meta data json for use in RAG prompt
+
+    Args: 
+        input: Query string from user
+
+    Return:
+        Cleaned string (correct spelling etc)
+        json of metadata for RAG query
+    """
+
+    try:
+        # Initialize OpenAI client with OpenRouter
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1"
+        )
+        
+        # Define the system instruction
+        system_instruction = (
+            "You are a RAG Query Optimizer. Extract a cleaned query and constraints.\n\n"
+            "Return JSON with this EXACT structure:\n"
+            "{\n"
+            '  "cleaned_query": "cleaned search terms",\n'
+            '  "constraints": {\n'
+            '    "course_name": string or null,\n'
+            '    "instructor": string OR {"$in": [list]} OR null,\n'
+            '    "course_type": string or null,\n'
+            '    "location": string OR {"$nin": [list]} OR null,\n'
+            '    "cost": number OR {"$gte": num} OR {"$lte": num} OR null,\n'
+            '    "source": null\n'
+            '  }\n'
+            '}\n\n'
+            "RULES:\n"
+            "1. cleaned_query: Remove filler words, fix typos, expand abbreviations\n"
+            "2. For 'cheap/affordable': cost = {'$lte': 80}\n"
+            "3. For 'expensive/premium': cost = {'$gte': 100}\n"
+            "4. For price range: cost = {'$and': [{'$gte': min}, {'$lte': max}]}\n"
+            "5. For 'not in X': location = {'$nin': ['X']}\n"
+            "6. For 'with X or Y': instructor = {'$in': ['X', 'Y']}\n"
+            "7. Set unused fields to null\n"
+        )
+
+        # Make API call with JSON response format
+        response = client.chat.completions.create(
+            model="google/gemini-2.0-flash-001",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_query}
+            ],
+            response_format={"type": "json_object"}
+        )
+        
+        return json.loads(response.choices[0].message.content)
+
+    except Exception as e:
+        print(f"Extraction Error: {e}")
+        return user_query
