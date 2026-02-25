@@ -11,6 +11,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from utils.getters import load_and_clean_data
+import google.generativeai as genai
+from google.genai.types import GenerateContentConfig
 
 load_dotenv()
 CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_db")
@@ -290,6 +292,72 @@ def format_query_results(
         formatted.append(result)
 
     return formatted
+
+
+def rewrite_query(user_question, chat_history):
+    # Use a cheap/fast model for this step
+    rewriter_model = genai.GenerativeModel("gemini-2.5-flash")
+
+    prompt = f"""
+    Based on the following chat history, rewrite the user's latest question 
+    into a standalone search query that captures all necessary context.
+    
+    CHAT HISTORY:
+    {chat_history}
+    
+    LATEST QUESTION:
+    {user_question}
+    
+    STANDALONE QUERY:"""
+
+    response = rewriter_model.generate_content(prompt)
+    return response.text
+
+
+def query_gemini_with_rag(
+    chat: genai.ChatSession,
+    collection_name: str,
+    query: str,
+    n_results: int = 5,
+    collection: Optional[chromadb.Collection] = None,
+    system_prompt: Optional[str] = None,
+    temperature: Optional[float] = None,
+    max_tokens: Optional[int] = None,
+    where: Optional[Dict[str, Any]] = None,
+    where_document: Optional[Dict[str, Any]] = None,
+) -> str:  #
+
+    try:
+        if collection is None:
+            collection = get_collection(collection_name=collection_name)
+
+        history = chat.history
+        search_query = rewrite_query(query, history)
+
+        # Retrieve relevant documents from the collection
+        rag_results = collection.query(
+            query_texts=[search_query],
+            n_results=n_results,
+            where=where,
+            where_document=where_document,
+        )
+
+        prompt = f"""
+        DATA CONTEXT:
+        {rag_results['documents']}
+        
+        USER QUESTION:
+        {query}"""
+
+        response = chat.send_message(
+            content=prompt,
+        )
+
+        return response.text
+
+    except Exception as e:
+        # If it fails, we want to see the specific error
+        return f"Dandori Error: {str(e)}"
 
 
 def query_llm_with_rag(

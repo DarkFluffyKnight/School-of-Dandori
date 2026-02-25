@@ -2,6 +2,7 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+from google.genai.types import GenerateContentConfig
 from openai import OpenAI
 
 import utils.rag as rag
@@ -20,8 +21,32 @@ from utils.getters import (
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-2.5-flash")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
+    if "chat" not in st.session_state:
+        model = genai.GenerativeModel(
+            model_name=GEMINI_MODEL,
+            system_instruction="""You are the School of Dandori Assistant. 
+Your goal is to help users find courses.
+Maintain a whimsical, helpful tone.
+
+---
+INSTRUCTIONS FOR HANDLING DATA:
+1. DATA CONTEXT contains the courses currently retrieved from the database.
+2. **STRICT FILTERING:** If a user asks a follow-up question (e.g., "Which of those..."), you must ONLY list courses that satisfy BOTH the new criteria AND all previous criteria discussed in the chat.
+3. **CONTEXTUAL CONTINUITY:** If the DATA CONTEXT contains new courses that do not match the previous topic (e.g., if they are in Devon but don't involve Wool), you MUST EXCLUDE them.
+4. If no courses in the provided DATA CONTEXT meet the combined criteria, do not make them up. Instead, suggest they check the 'Discovery Gallery' and filters.
+
+---
+PROMPT FORMAT:
+DATA CONTEXT:
+[Documents]
+
+USER QUESTION:
+[The user question]""",
+        )
+        st.session_state.chat = model.start_chat()
 else:
     st.error("Missing Gemini API Key! Please check your .env file.")
 
@@ -539,8 +564,16 @@ def main():
                     with st.spinner("Thinking..."):
 
                         # response = get_chatbot_response(prompt, df)
-                        response = rag.query_llm_with_rag(
-                            chat_client=st.session_state.chat_client,
+                        # response = rag.query_llm_with_rag(
+                        #     chat_client=st.session_state.chat_client,
+                        #     collection_name="pdf_data",
+                        #     collection=st.session_state.collection,
+                        #     query=prompt,
+                        #     history=st.session_state.messages,
+                        # )
+
+                        response = rag.query_gemini_with_rag(
+                            chat=st.session_state.chat,
                             collection_name="pdf_data",
                             collection=st.session_state.collection,
                             query=prompt,
