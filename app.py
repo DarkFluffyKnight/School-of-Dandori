@@ -1,6 +1,4 @@
 import streamlit as st
-import pandas as pd
-import ast
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -21,42 +19,31 @@ from utils.getters import (
 
 load_dotenv()
 
-gemini_api_key = os.getenv("GEMINI_API_KEY")
-if gemini_api_key:
-    genai.configure(api_key=gemini_api_key)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 else:
     st.error("Missing Gemini API Key! Please check your .env file.")
 
 
-openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-if not openrouter_api_key:
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+if not OPENROUTER_API_KEY:
     st.error("Missing OpenAI API Key! Please check your .env file.")
 
-endpoint = os.getenv("ENDPOINT")
-if not endpoint:
-    endpoint = "https://openrouter.ai/api/v1"
+ENDPOINT = os.getenv("ENDPOINT", "https://openrouter.ai/api/v1")
 
-chat_client = OpenAI(api_key=openrouter_api_key, base_url=endpoint)
+chat_client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=ENDPOINT)
 
 # Page Setup
 st.set_page_config(page_title="School of Dandori | Course Portal", layout="wide")
 
-
 df = load_and_clean_data()
 
 if "collection" not in st.session_state:
-    chunks = rag.generate_chunks_from_dataframe(df=df)
-    collection = rag.create_collection(
-        collection_name="pdf_data",
-        api_key=openrouter_api_key,
-        base_url=endpoint,
-    )
-    # print(chunks[0])
-    rag.add_chunks_to_collection(collection=collection, chunks=chunks)
-    st.session_state.collection = collection
+    st.session_state.collection = rag.get_collection(collection_name="pdf_data")
 
 if "chat_client" not in st.session_state:
-    st.session_state.chat_client = OpenAI(api_key=openrouter_api_key, base_url=endpoint)
+    st.session_state.chat_client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=ENDPOINT)
 
 
 # Visual Styling (Kept identical to your version)
@@ -137,8 +124,8 @@ def main():
         # chunks = rag.generate_chunks_from_dataframe(df=df)
         # collection = rag.create_collection(
         #     collection_name="pdf_data",
-        #     api_key=openrouter_api_key,
-        #     base_url=endpoint,
+        #     api_key=OPENROUTER_API_KEY,
+        #     base_url=ENDPOINT,
         # )
         # rag.add_chunks_to_collection(collection=collection, chunks=chunks)
 
@@ -554,6 +541,7 @@ def main():
                         # response = get_chatbot_response(prompt, df)
                         response = rag.query_llm_with_rag(
                             chat_client=st.session_state.chat_client,
+                            collection_name="pdf_data",
                             collection=st.session_state.collection,
                             query=prompt,
                         )

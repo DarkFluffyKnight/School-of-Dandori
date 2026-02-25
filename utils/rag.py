@@ -8,6 +8,16 @@ import requests
 import pandas as pd
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
+from utils.getters import load_and_clean_data
+
+load_dotenv()
+CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+ENDPOINT = os.getenv("ENDPOINT", "https://openrouter.ai/api/v1")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "google/gemini-embedding-001")
+QUERY_MODEL = os.getenv("QUERY_MODEL", "google/gemini-2.0-flash-001")
 
 
 class Embedder(EmbeddingFunction):
@@ -19,7 +29,7 @@ class Embedder(EmbeddingFunction):
         self,
         api_key: str,
         base_url: str,
-        model: str = "google/gemini-embedding-001",
+        model: str = EMBEDDING_MODEL,
     ):
         """
         Initialize the embedder.
@@ -124,39 +134,6 @@ def generate_chunks_from_dataframe(
     return chunks
 
 
-def create_collection(
-    collection_name: str,
-    api_key: str,
-    base_url: str,
-    model: str = "google/gemini-embedding-001",
-    client: Optional[chromadb.Client] = None,
-) -> chromadb.Collection:
-    """
-    Create or get a ChromaDB collection with the specified embedding function.
-
-    Args:
-        collection_name: Name of the collection
-        api_key: API key for embeddings
-        base_url: Base URL for embeddings endpoint
-        model: Model name for embeddings
-        client: Optional ChromaDB client (creates new one if not provided)
-
-    Returns:
-        ChromaDB collection object
-    """
-    if client is None:
-        client = chromadb.Client()
-
-    embedder = Embedder(api_key=api_key, base_url=base_url, model=model)
-
-    collection = client.get_or_create_collection(
-        name=collection_name,
-        embedding_function=embedder,
-    )
-
-    return collection
-
-
 def add_chunks_to_collection(
     collection: chromadb.Collection,
     chunks: List[Dict[str, Any]],
@@ -181,6 +158,73 @@ def add_chunks_to_collection(
         )
         if verbose:
             print(f"Added batch {i // batch_size + 1} ({len(batch)} chunks)")
+
+
+def create_collection(
+    collection_name: str,
+    api_key: str,
+    base_url: str,
+    model: str = EMBEDDING_MODEL,
+    client=None,
+) -> chromadb.Collection:
+    """
+    Create or get a ChromaDB collection with the specified embedding function.
+    Since the collection exists in the repository, this shouldn't ever actually be run
+
+    Args:
+        collection_name: Name of the collection
+        api_key: API key for embeddings
+        base_url: Base URL for embeddings endpoint
+        model: Model name for embeddings
+        client: Optional ChromaDB client (creates new one if not provided)
+
+    Returns:
+        ChromaDB collection object
+    """
+    if client is None:
+        client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+
+    # print("-" * 50)
+    # print("I'm running when I shouldn't!")
+    # print("-" * 50)
+
+    embedder = Embedder(api_key=api_key, base_url=base_url, model=model)
+
+    collection = client.create_collection(
+        name=collection_name,
+        embedding_function=embedder,
+    )
+
+    return collection
+
+
+def get_collection(
+    collection_name: str,
+):
+    try:
+        # FIrst try getting the collection
+        client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+        # We use both the name and embdding function to get it or it will
+        # look for one with the default embedding function
+        embedder = Embedder(
+            api_key=OPENROUTER_API_KEY,
+            base_url=ENDPOINT,
+            model=EMBEDDING_MODEL,
+        )
+        collection = client.get_collection(
+            name=collection_name, embedding_function=embedder
+        )
+    except:
+        # If the collection doesn't exist, make one and embed pdf data
+        collection = create_collection(
+            collection_name=collection_name,
+            api_key=OPENROUTER_API_KEY,
+            base_url=ENDPOINT,
+        )
+        df = load_and_clean_data()
+        chunks = generate_chunks_from_dataframe(df=df)
+        add_chunks_to_collection(collection=collection, chunks=chunks)
+    return collection
 
 
 def query_collection(
@@ -250,10 +294,11 @@ def format_query_results(
 
 def query_llm_with_rag(
     chat_client: OpenAI,
-    collection: chromadb.Collection,
+    collection_name: str,
     query: str,
-    model: str = "google/gemini-2.0-flash-001",
+    model: str = QUERY_MODEL,
     n_results: int = 10,
+    collection: Optional[chromadb.Collection] = None,
     system_prompt: Optional[str] = None,
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
@@ -268,10 +313,11 @@ def query_llm_with_rag(
 
     Args:
         chat_client: OpenAI client instance for making LLM requests
-        collection: ChromaDB collection to query for context
+        collection_name: ChromaDB collection name to query for context
         query: User's query text
         model: LLM model to use for generation
         n_results: Number of documents to retrieve for context
+        collection: Optional ChromaDB collection to query for context, will be used instead of found with name
         system_prompt: Optional system prompt to guide the LLM's behavior
         temperature: Optional temperature for response randomness (0.0-2.0)
         max_tokens: Optional maximum tokens in the response
@@ -281,6 +327,10 @@ def query_llm_with_rag(
     Returns:
         The LLM's response as a string
     """
+
+    if collection is None:
+        collection = get_collection(collection_name=collection_name)
+
     # Retrieve relevant documents from the collection
     rag_results = collection.query(
         query_texts=[query],
@@ -314,10 +364,11 @@ def query_llm_with_rag(
 
 def query_llm_with_formatted_rag(
     chat_client: OpenAI,
-    collection: chromadb.Collection,
+    collection_name: str,
     query: str,
-    model: str = "google/gemini-2.0-flash-001",
+    model: str = QUERY_MODEL,
     n_results: int = 10,
+    collection: Optional[chromadb.Collection] = None,
     system_prompt: Optional[str] = None,
     context_template: str = "Context:\n{context}\n\nQuestion: {query}",
     temperature: Optional[float] = None,
@@ -333,12 +384,12 @@ def query_llm_with_formatted_rag(
 
     Args:
         chat_client: OpenAI client instance for making LLM requests
-        collection: ChromaDB collection to query for context
+        collection_name: ChromaDB collection name to query for context
         query: User's query text
         model: LLM model to use for generation
         n_results: Number of documents to retrieve for context
+        collection: Optional ChromaDB collection to query for context, will be used instead of found with name
         system_prompt: Optional system prompt to guide the LLM's behavior
-        context_template: Template string with {context} and {query} placeholders
         temperature: Optional temperature for response randomness (0.0-2.0)
         max_tokens: Optional maximum tokens in the response
         where: Optional metadata filter for document retrieval
@@ -351,6 +402,10 @@ def query_llm_with_formatted_rag(
             - distances: Similarity distances for retrieved documents
             - metadatas: Metadata for retrieved documents
     """
+
+    if collection is None:
+        collection = get_collection(collection_name=collection_name)
+
     # Retrieve relevant documents from the collection
     rag_results = collection.query(
         query_texts=[query],

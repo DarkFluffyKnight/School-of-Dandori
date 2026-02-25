@@ -81,14 +81,14 @@ def get_all_locations(df: pd.DataFrame) -> list[str]:
 
 
 @st.cache_data
-def load_and_clean_data() -> pd.DataFrame:
+def load_and_clean_data(path: str = "course_data.csv") -> pd.DataFrame:
     """
     Loads data from the course_data.csv dataset and converts the prices to floats, and string representations of lists of strings to actual lists of strings. Uses streamlit's cache_data decorater to save reloading each time.
 
     Returns:
         pd.DataFrame: dataframe with complete, clean information about course details
     """
-    df = pd.read_csv("course_data.csv")
+    df = pd.read_csv(path)
     df["cost"] = df["cost"].apply(
         lambda c: pd.to_numeric(str(c).replace("£", "").replace(",", ""))
     )
