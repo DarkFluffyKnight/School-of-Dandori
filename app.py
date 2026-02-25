@@ -167,6 +167,13 @@ def main():
             st.session_state.messages = []
         if "favorites" not in st.session_state:
             st.session_state.favorites = []
+        if "search_query" not in st.session_state:
+            st.session_state.search_query = ""
+        if "price_range" not in st.session_state:
+            st.session_state.price_range = (
+                float(df["cost"].min()),
+                float(df["cost"].max()),
+            )
 
         # --- Sidebar (Kept identical) ---
         st.sidebar.title("🌿 Dandori Menu")
@@ -203,7 +210,14 @@ def main():
         st.sidebar.divider()
 
         st.sidebar.subheader("Filter Your Search")
-        search_query = st.sidebar.text_input("Search keywords:", "")
+
+        # Initialize search_query_input in session state if not exists
+        if "search_query_input" not in st.session_state:
+            st.session_state.search_query_input = ""
+
+        search_query = st.sidebar.text_input(
+            "Search keywords:", key="search_query_input"
+        )
 
         # Sort by dropdown
         sort_by = st.sidebar.selectbox(
@@ -222,15 +236,8 @@ def main():
             label="Price",
             min_value=float(df["cost"].min()),
             max_value=float(df["cost"].max()),
-            value=(float(df["cost"].min()), float(df["cost"].max())),
+            value=st.session_state.price_range,
         )
-
-        if st.sidebar.button("Clear All Filters", use_container_width=True):
-            st.session_state.selected_skills = []
-            st.session_state.selected_instructor = []
-            st.session_state.selected_category = []
-            st.session_state.selected_location = []
-            st.rerun()
 
         selected_location = st.sidebar.multiselect(
             "Location:",
@@ -253,17 +260,34 @@ def main():
             default=st.session_state.selected_skills,
         )
 
+        if st.sidebar.button("Clear All Filters", use_container_width=True):
+            st.session_state.selected_skills = []
+            st.session_state.selected_instructor = []
+            st.session_state.selected_category = []
+            st.session_state.selected_location = []
+            # Reset price range
+            st.session_state.price_range = (
+                float(df["cost"].min()),
+                float(df["cost"].max()),
+            )
+            # Delete search widget key to reset it
+            if "search_query_input" in st.session_state:
+                del st.session_state.search_query_input
+            st.rerun()
+
         # State Sync
         if (
             selected_skills != st.session_state.selected_skills
             or selected_instructor != st.session_state.selected_instructor
             or selected_category != st.session_state.selected_category
             or selected_location != st.session_state.selected_location
+            or slider_price != st.session_state.price_range
         ):
             st.session_state.selected_skills = selected_skills
             st.session_state.selected_instructor = selected_instructor
             st.session_state.selected_category = selected_category
             st.session_state.selected_location = selected_location
+            st.session_state.price_range = slider_price
             st.rerun()
 
         # --- Filter Logic (Kept identical) ---
@@ -286,7 +310,7 @@ def main():
                     lambda s: any(sk in s for sk in st.session_state.selected_skills)
                 )
             ]
-        if search_query:
+        if search_query:  # Use the local variable from the text_input
             filtered_df = filtered_df[
                 filtered_df["course_name"].str.contains(search_query, case=False)
                 | filtered_df["course_description"].str.contains(
@@ -294,8 +318,8 @@ def main():
                 )
             ]
         filtered_df = filtered_df[
-            (filtered_df["cost"] <= slider_price[1])
-            & (filtered_df["cost"] >= slider_price[0])
+            (filtered_df["cost"] <= st.session_state.price_range[1])
+            & (filtered_df["cost"] >= st.session_state.price_range[0])
         ]
 
         # Apply sorting
@@ -554,35 +578,47 @@ def main():
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
+            # Add an anchor at the bottom
+            st.markdown('<div id="bottom"></div>', unsafe_allow_html=True)
+
             # Chat Input
             if prompt := st.chat_input("I'm looking for a baking class in York..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                with st.chat_message("user"):
-                    st.markdown(prompt)
 
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
+                with st.spinner("Thinking..."):
+                    # response = get_chatbot_response(prompt, df)
+                    # response = rag.query_llm_with_rag(
+                    #     chat_client=st.session_state.chat_client,
+                    #     collection_name="pdf_data",
+                    #     collection=st.session_state.collection,
+                    #     query=prompt,
+                    #     history=st.session_state.messages
+                    # )
 
-                        # response = get_chatbot_response(prompt, df)
-                        # response = rag.query_llm_with_rag(
-                        #     chat_client=st.session_state.chat_client,
-                        #     collection_name="pdf_data",
-                        #     collection=st.session_state.collection,
-                        #     query=prompt,
-                        #     history=st.session_state.messages,
-                        # )
+                    response = rag.query_gemini_with_rag(
+                        chat=st.session_state.chat,
+                        collection_name="pdf_data",
+                        collection=st.session_state.collection,
+                        query=prompt,
+                    )
 
-                        response = rag.query_gemini_with_rag(
-                            chat=st.session_state.chat,
-                            collection_name="pdf_data",
-                            collection=st.session_state.collection,
-                            query=prompt,
-                        )
-
-                        st.markdown(response)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response}
                 )
+                st.rerun()
+
+            # JavaScript to scroll to anchor
+            st.markdown(
+                """
+                <script>
+                    var element = window.parent.document.getElementById('bottom');
+                    if (element) {
+                        element.scrollIntoView({behavior: 'smooth', block: 'end'});
+                    }
+                </script>
+                """,
+                unsafe_allow_html=True,
+            )
 
     except FileNotFoundError:
         st.error("Missing Data: Please ensure course_data.csv is present.")
