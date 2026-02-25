@@ -4,3 +4,4 @@ chromadb
 requests
 openai
 google-generativeai
+google-genai
