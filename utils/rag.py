@@ -297,6 +297,7 @@ def query_llm_with_rag(
     collection_name: str,
     query: str,
     history: dict,
+    max_history_messages: int = 6,
     model: str = QUERY_MODEL,
     n_results: int = 10,
     collection: Optional[chromadb.Collection] = None,
@@ -305,7 +306,6 @@ def query_llm_with_rag(
     max_tokens: Optional[int] = None,
     where: Optional[Dict[str, Any]] = None,
     where_document: Optional[Dict[str, Any]] = None,
-    max_history_messages: int = 6,
 ) -> str:
     """
     Query an LLM with RAG context from the collection.
@@ -317,6 +317,8 @@ def query_llm_with_rag(
         chat_client: OpenAI client instance for making LLM requests
         collection_name: ChromaDB collection name to query for context
         query: User's query text
+        history: Dictionary containing pevious messages
+        max_history_messages: Number of previous messages to include in query
         model: LLM model to use for generation
         n_results: Number of documents to retrieve for context
         collection: Optional ChromaDB collection to query for context, will be used instead of found with name
@@ -380,6 +382,8 @@ def query_llm_with_formatted_rag(
     chat_client: OpenAI,
     collection_name: str,
     query: str,
+    history: dict,
+    max_history_messages: int = 6,
     model: str = QUERY_MODEL,
     n_results: int = 10,
     collection: Optional[chromadb.Collection] = None,
@@ -400,6 +404,8 @@ def query_llm_with_formatted_rag(
         chat_client: OpenAI client instance for making LLM requests
         collection_name: ChromaDB collection name to query for context
         query: User's query text
+        history: Dictionary containing pevious messages
+        max_history_messages: Number of previous messages to include in query
         model: LLM model to use for generation
         n_results: Number of documents to retrieve for context
         collection: Optional ChromaDB collection to query for context, will be used instead of found with collection_name
@@ -442,6 +448,18 @@ def query_llm_with_formatted_rag(
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
+
+    # Add limited history (last n messages only)
+    if history:
+        # Get the last N messages
+        recent_history = (
+            history[-max_history_messages:]
+            if len(history) > max_history_messages
+            else history
+        )
+        messages.extend(recent_history)
+
+    # Add current query
     messages.append({"role": "user", "content": formatted_prompt})
 
     # Build request parameters
