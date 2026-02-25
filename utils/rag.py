@@ -11,6 +11,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from utils.getters import load_and_clean_data
+from utils.getters import clean_query
 import google.generativeai as genai
 from google.genai.types import GenerateContentConfig
 
@@ -334,11 +335,15 @@ def query_gemini_with_rag(
         history = chat.history
         search_query = rewrite_query(query, history)
 
+        cleaned_query = clean_query(query)
+        clean_prompt = cleaned_query["cleaned_query"]
+        constraints = cleaned_query["constraints"]
+
         # Retrieve relevant documents from the collection
         rag_results = collection.query(
             query_texts=[search_query],
             n_results=n_results,
-            where=where,
+            where=constraints,
             where_document=where_document,
         )
 
