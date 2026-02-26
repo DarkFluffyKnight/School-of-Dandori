@@ -372,21 +372,21 @@ def query_gemini_with_rag(
         history = chat.history
         search_query = rewrite_query_gemini(query, history)
 
-        cleaned_query = clean_query(query)
-        clean_prompt = cleaned_query["cleaned_query"]
-        constraints = cleaned_query["constraints"]
+        # cleaned_query = clean_query(query)
+        # clean_prompt = cleaned_query["cleaned_query"]
+        # constraints = cleaned_query["constraints"]
 
-        # Filter the contrainsts so that we only pass values and not null values
-        filtered_constraints = {key: value for key, value in constraints.items() if value is not None}
+        # # Filter the contrainsts so that we only pass values and not null values
+        # filtered_constraints = {key: value for key, value in constraints.items() if value is not None}
 
-        # Only pass the contrainsts is we have constraints
-        where_clause = filtered_constraints if filtered_constraints else None
+        # # Only pass the contrainsts is we have constraints
+        # where_clause = filtered_constraints if filtered_constraints else None
 
         # Retrieve relevant documents from the collection
         rag_results = collection.query(
             query_texts=[search_query],
             n_results=n_results,
-            where=where_clause,
+            # where=where_clause,
             where_document=where_document,
         )
 

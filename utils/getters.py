@@ -103,25 +103,23 @@ def load_and_clean_data(path: str = "course_data.csv") -> pd.DataFrame:
         df[col] = df[col].apply(parse_list)
     return df
 
+
 def clean_query(user_query: str):
     """
     Cleans user query and creates meta data json for use in RAG prompt
 
-    Args: 
+    Args:
         input: Query string from user
 
     Return:
-        Cleaned string (correct spelling etc)
-        json of metadata for RAG query
+        str: Cleaned string (correct spelling etc)
+        Any: json of metadata for RAG query
     """
 
     try:
         # Initialize OpenAI client with OpenRouter
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://openrouter.ai/api/v1"
-        )
-        
+        client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+
         # Define the system instruction
         system_instruction = (
             "You are a RAG Query Optimizer. Extract a cleaned query and constraints.\n\n"
@@ -135,8 +133,8 @@ def clean_query(user_query: str):
             '    "location": string OR {"$nin": [list]} OR null,\n'
             '    "cost": number OR {"$gte": num} OR {"$lte": num} OR null,\n'
             '    "source": null\n'
-            '  }\n'
-            '}\n\n'
+            "  }\n"
+            "}\n\n"
             "RULES:\n"
             "1. cleaned_query: Remove filler words, fix typos, expand abbreviations\n"
             "2. For 'cheap/affordable': cost = {'$lte': 80}\n"
@@ -152,11 +150,14 @@ def clean_query(user_query: str):
             model="google/gemini-2.0-flash-001",
             messages=[
                 {"role": "system", "content": system_instruction},
-                {"role": "user", "content": user_query}
+                {"role": "user", "content": user_query},
             ],
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
-        
+
+        # Avoids having lots of unused clients
+        client.close()
+
         return json.loads(response.choices[0].message.content)
 
     except Exception as e:
