@@ -294,7 +294,44 @@ def format_query_results(
     return formatted
 
 
-def rewrite_query(user_question, chat_history):
+def rewrite_query_openai(
+    user_question: str,
+    chat_history: list[dict] = [],
+) -> str:
+    prompt = f"""
+    Based on the chat history, rewrite the user's latest question 
+    into a standalone search query that captures all necessary context.
+
+    LATEST QUESTION:
+    {user_question}
+    
+    STANDALONE QUERY:"""
+
+    chat_history.append({"role": "user", "content": prompt})
+
+    chat_client = OpenAI(
+        api_key=OPENROUTER_API_KEY,
+        base_url=ENDPOINT,
+    )
+
+    # Build request parameters
+    request_params = {"model": "google/gemini-2.5-flash", "messages": chat_history}
+
+    # Make the LLM request
+    response = chat_client.chat.completions.create(**request_params)
+
+    chat_client.close()
+
+    # print("-" * 50)
+    # print(f"Rewrite query:\n{prompt}")
+    # print("-" * 50)
+    # print("Rewritten:\n{new}".format(new=response.choices[0].message.content))
+    # print("-" * 50)
+
+    return response.choices[0].message.content
+
+
+def rewrite_query_gemini(user_question, chat_history):
     # Use a cheap/fast model for this step
     rewriter_model = genai.GenerativeModel("gemini-2.5-flash")
 
@@ -332,7 +369,7 @@ def query_gemini_with_rag(
             collection = get_collection(collection_name=collection_name)
 
         history = chat.history
-        search_query = rewrite_query(query, history)
+        search_query = rewrite_query_gemini(query, history)
 
         # Retrieve relevant documents from the collection
         rag_results = collection.query(
@@ -364,10 +401,10 @@ def query_llm_with_rag(
     chat_client: OpenAI,
     collection_name: str,
     query: str,
-    history: Optional[dict] = None,
-    max_history_messages: int = 6,
+    history: Optional[list[dict]] = None,
+    max_history_messages: int = 5,
     model: str = QUERY_MODEL,
-    n_results: int = 10,
+    n_results: int = 5,
     collection: Optional[chromadb.Collection] = None,
     system_prompt: Optional[str] = None,
     temperature: Optional[float] = None,
@@ -385,7 +422,7 @@ def query_llm_with_rag(
         chat_client: OpenAI client instance for making LLM requests
         collection_name: ChromaDB collection name to query for context
         query: User's query text
-        history: Dictionary containing pevious messages
+        history: List containing pevious messages, each a dictionary
         max_history_messages: Number of previous messages to include in query
         model: LLM model to use for generation
         n_results: Number of documents to retrieve for context
@@ -400,20 +437,6 @@ def query_llm_with_rag(
         The LLM's response as a string
     """
 
-    if collection is None:
-        collection = get_collection(collection_name=collection_name)
-
-    # Retrieve relevant documents from the collection
-    rag_results = collection.query(
-        query_texts=[query],
-        n_results=n_results,
-        where=where,
-        where_document=where_document,
-    )
-
-    # Format the embedded context with the user query
-    embedded_query = f"{rag_results['documents']}\n\n{query}"
-
     # Build messages list
     messages = []
     if system_prompt:
@@ -421,13 +444,33 @@ def query_llm_with_rag(
 
     # Add limited history (last n messages only)
     if history:
-        # Get the last N messages
+        # Get the last N messages (exclude user query)
         recent_history = (
-            history[-max_history_messages:]
+            history[-max_history_messages - 1 : -1]
             if len(history) > max_history_messages
             else history
         )
         messages.extend(recent_history)
+
+    search_query = rewrite_query_openai(
+        user_question=query, chat_history=list(recent_history)
+    )
+
+    if collection is None:
+        collection = get_collection(collection_name=collection_name)
+
+    # Retrieve relevant documents from the collection
+    rag_results = collection.query(
+        query_texts=[search_query],
+        n_results=n_results,
+        where=where,
+        where_document=where_document,
+    )
+
+    # Format the embedded context with the user query
+    embedded_query = (
+        f"DATA CONTEXT:\n{rag_results['documents']}\n\nUSER QUESTION:\n{query}"
+    )
 
     # Add current query
     messages.append({"role": "user", "content": embedded_query})
@@ -443,6 +486,12 @@ def query_llm_with_rag(
     # Make the LLM request
     response = chat_client.chat.completions.create(**request_params)
 
+    # print("-" * 50)
+    # print(f"Full query:\n{embedded_query}")
+    # print("-" * 50)
+    # print("Response:\n{new}".format(new=response.choices[0].message.content))
+    # print("-" * 50)
+
     return response.choices[0].message.content
 
 
@@ -450,7 +499,7 @@ def query_llm_with_formatted_rag(
     chat_client: OpenAI,
     collection_name: str,
     query: str,
-    history: Optional[dict] = None,
+    history: Optional[list[dict]] = None,
     max_history_messages: int = 6,
     model: str = QUERY_MODEL,
     n_results: int = 10,
@@ -472,7 +521,7 @@ def query_llm_with_formatted_rag(
         chat_client: OpenAI client instance for making LLM requests
         collection_name: ChromaDB collection name to query for context
         query: User's query text
-        history: Dictionary containing pevious messages
+        history: List containing pevious messages with each a dictionary
         max_history_messages: Number of previous messages to include in query
         model: LLM model to use for generation
         n_results: Number of documents to retrieve for context
@@ -492,12 +541,31 @@ def query_llm_with_formatted_rag(
             - metadatas: Metadata for retrieved documents
     """
 
+    # Build messages list
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+
+    # Add limited history (last n messages only)
+    if history:
+        # Get the last N messages (exclude user query)
+        recent_history = (
+            history[-max_history_messages - 1 : -1]
+            if len(history) > max_history_messages
+            else history
+        )
+        messages.extend(recent_history)
+
+    search_query = rewrite_query_openai(
+        user_question=query, chat_history=list(recent_history)
+    )
+
     if collection is None:
         collection = get_collection(collection_name=collection_name)
 
     # Retrieve relevant documents from the collection
     rag_results = collection.query(
-        query_texts=[query],
+        query_texts=[search_query],
         n_results=n_results,
         where=where,
         where_document=where_document,
@@ -512,23 +580,8 @@ def query_llm_with_formatted_rag(
     # Apply the template
     formatted_prompt = context_template.format(context=context, query=query)
 
-    # Build messages list
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-
-    # Add limited history (last n messages only)
-    if history:
-        # Get the last N messages
-        recent_history = (
-            history[-max_history_messages:]
-            if len(history) > max_history_messages
-            else history
-        )
-        messages.extend(recent_history)
-
     # Add current query
-    messages.append({"role": "user", "content": formatted_prompt})
+    messages[-1] = {"role": "user", "content": formatted_prompt}
 
     # Build request parameters
     request_params = {"model": model, "messages": messages}

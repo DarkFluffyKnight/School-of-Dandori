@@ -20,14 +20,7 @@ from utils.getters import (
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-2.5-flash")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    if "chat" not in st.session_state:
-        model = genai.GenerativeModel(
-            model_name=GEMINI_MODEL,
-            system_instruction="""You are the School of Dandori Assistant. 
+rag_system_prompt = """You are the School of Dandori Assistant. 
 Your goal is to help users find courses.
 Maintain a whimsical, helpful tone.
 
@@ -44,7 +37,16 @@ DATA CONTEXT:
 [Documents]
 
 USER QUESTION:
-[The user question]""",
+[The user question]"""
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-2.5-flash")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    if "chat" not in st.session_state:
+        model = genai.GenerativeModel(
+            model_name=GEMINI_MODEL,
+            system_instruction=rag_system_prompt,
         )
         st.session_state.chat = model.start_chat()
 else:
@@ -144,16 +146,6 @@ def main():
     """Main app function"""
     # --- MAIN APP ---
     try:
-        # df = load_and_clean_data()
-
-        # chunks = rag.generate_chunks_from_dataframe(df=df)
-        # collection = rag.create_collection(
-        #     collection_name="pdf_data",
-        #     api_key=OPENROUTER_API_KEY,
-        #     base_url=ENDPOINT,
-        # )
-        # rag.add_chunks_to_collection(collection=collection, chunks=chunks)
-
         # --- SESSION STATE INITIALIZATION ---
         if "selected_skills" not in st.session_state:
             st.session_state.selected_skills = []
@@ -587,24 +579,36 @@ def main():
 
                 with st.spinner("Thinking..."):
                     # response = get_chatbot_response(prompt, df)
+                    response = rag.query_llm_with_rag(
+                        chat_client=st.session_state.chat_client,
+                        collection_name="pdf_data",
+                        collection=st.session_state.collection,
+                        query=prompt,
+                        history=st.session_state.messages,
+                        system_prompt=rag_system_prompt,
+                    )
                     # response = rag.query_llm_with_rag(
                     #     chat_client=st.session_state.chat_client,
                     #     collection_name="pdf_data",
                     #     collection=st.session_state.collection,
                     #     query=prompt,
-                    #     history=st.session_state.messages
+                    #     history=st.session_state.messages,
                     # )
 
-                    response = rag.query_gemini_with_rag(
-                        chat=st.session_state.chat,
-                        collection_name="pdf_data",
-                        collection=st.session_state.collection,
-                        query=prompt,
-                    )
+                    # response = rag.query_gemini_with_rag(
+                    #     chat=st.session_state.chat,
+                    #     collection_name="pdf_data",
+                    #     collection=st.session_state.collection,
+                    #     query=prompt,
+                    # )
+
+                # print("-" * 50)
+                # print("-" * 50)
 
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response}
                 )
+                # print(st.session_state.messages)
                 st.rerun()
 
             # JavaScript to scroll to anchor
