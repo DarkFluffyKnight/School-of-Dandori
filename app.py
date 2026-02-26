@@ -73,26 +73,167 @@ if "chat_client" not in st.session_state:
     st.session_state.chat_client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=ENDPOINT)
 
 
-# Visual Styling (Kept identical to your version)
+# Enhanced Visual Styling
 st.markdown(
     """
-    <style>
-    .skill-tag {
-        display: inline-block;
-        background-color: #f0f4f8;
-        color: #334e68;
-        padding: 4px 12px;
-        border-radius: 20px;
-        margin: 2px;
-        font-size: 0.85rem;
-        border: 1px solid #bcccdc;
-    }
-    .price-badge {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #1b4332;
-    }
-    </style>
+  <style>
+/* Main app styling */
+.main {
+    background-color: #fafbfc;
+}
+
+/* Skill tags */
+.skill-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin: 3px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+.skill-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Price badge */
+.price-badge {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Course card container */
+.course-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border-left: 4px solid #667eea;
+}
+.course-card:hover {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+/* Header styling */
+.main-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Stats badge */
+.stats-badge {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: 600;
+    margin: 10px 0;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Sidebar labels and text (but NOT input fields or buttons) */
+[data-testid="stSidebar"] .stMarkdown,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] p:not(button p) {
+    color: white !important;
+}
+
+/* Sidebar labels - but exclude button labels */
+[data-testid="stSidebar"] label:not(button label) {
+    color: white !important;
+}
+
+/* Keep input text dark so it's visible */
+[data-testid="stSidebar"] input {
+    color: #333333 !important;
+    background-color: white !important;
+}
+
+/* Keep multiselect text dark */
+[data-testid="stSidebar"] .stMultiSelect div[data-baseweb="select"] {
+    color: #333333 !important;
+}
+
+/* Keep button text dark - MOST SPECIFIC */
+[data-testid="stSidebar"] button,
+[data-testid="stSidebar"] button p,
+[data-testid="stSidebar"] button div,
+[data-testid="stSidebar"] button span,
+[data-testid="stSidebar"] .stButton button,
+[data-testid="stSidebar"] .stButton button * {
+    color: #333333 !important;
+}
+
+/* Button enhancements */
+.stButton>button {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+.stButton>button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Divider styling */
+hr {
+    margin: 20px 0;
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #667eea, transparent);
+}
+
+/* Chat message styling */
+.stChatMessage {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin: 10px 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Expander styling */
+.streamlit-expanderHeader {
+    background-color: #f0f4f8;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* Location and instructor badges */
+.info-badge {
+    background: #e3f2fd;
+    color: #1565c0;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-block;
+    margin-right: 8px;
+}
+</style>
 """,
     unsafe_allow_html=True,
 )
@@ -159,7 +300,7 @@ def main():
             st.session_state.messages = []
         if "favorites" not in st.session_state:
             st.session_state.favorites = []
-        if "search_query" not in st.session_state:
+        if "search_query_input" not in st.session_state:
             st.session_state.search_query = ""
         if "price_range" not in st.session_state:
             st.session_state.price_range = (
@@ -167,8 +308,9 @@ def main():
                 float(df["cost"].max()),
             )
 
-        # --- Sidebar (Kept identical) ---
-        st.sidebar.title("🌿 Dandori Menu")
+        # --- Enhanced Sidebar ---
+        st.sidebar.markdown("### 🌿 Dandori Menu")
+        st.sidebar.markdown("---")
 
         # Favorites section at the top
         with st.sidebar.expander(
@@ -202,10 +344,6 @@ def main():
         st.sidebar.divider()
 
         st.sidebar.subheader("Filter Your Search")
-
-        # Initialize search_query_input in session state if not exists
-        if "search_query_input" not in st.session_state:
-            st.session_state.search_query_input = ""
 
         search_query = st.sidebar.text_input(
             "Search keywords:", key="search_query_input"
@@ -334,30 +472,48 @@ def main():
 
         with tab_portal:
             if view_mode == "My Favorites":
-                st.title("⭐ My Favorite Courses")
+                st.markdown(
+                    """
+                    <div class="main-header">
+                        <h1>⭐ My Favorite Courses</h1>
+                        <p style="font-size: 1.1rem; margin-top: 10px;">Your curated collection of magical learning</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 if st.session_state.favorites:
                     favorites_df = df[df["class_id"].isin(st.session_state.favorites)]
-                    st.write(f"You have **{len(favorites_df)}** favorite courses.")
-                    st.divider()
+                    st.markdown(
+                        f'<div class="stats-badge">💖 You have {len(favorites_df)} favorite courses</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.write("")  # spacing
 
                     for r_num, row in favorites_df.iterrows():
+                        st.markdown('<div class="course-card">', unsafe_allow_html=True)
+                        
                         with st.container():
                             col1, col2 = st.columns([2, 1])
                             with col1:
-                                st.subheader(row["course_name"])
-                                st.write(
-                                    f"📍 **{row['location']}** | 👤 **{row['instructor']}**"
+                                st.markdown(f"### {row['course_name']}")
+                                st.markdown(
+                                    f'<span class="info-badge">📍 {row["location"]}</span>'
+                                    f'<span class="info-badge">👤 {row["instructor"]}</span>',
+                                    unsafe_allow_html=True,
                                 )
+                                st.write("")  # spacing
+                                
                                 desc = row["course_description"]
                                 if len(desc) > 150:
                                     st.write(f"{desc[:150]}...")
-                                    with st.expander("Read full description"):
+                                    with st.expander("📖 Read full description"):
                                         st.write(desc)
                                 else:
                                     st.write(desc)
 
-                                st.write("**Skills:**")
+                                st.write("")  # spacing
+                                st.markdown("**🎯 Skills You'll Develop:**")
                                 skill_cols = st.columns(
                                     min(len(row["skills_developed"]), 5)
                                 )
@@ -391,33 +547,66 @@ def main():
                                     f'<p class="price-badge">£{row["cost"]:.2f}</p>',
                                     unsafe_allow_html=True,
                                 )
-                                with st.expander("Learning Objectives"):
+                                st.write("")  # spacing
+                                
+                                with st.expander("🎯 Learning Objectives"):
                                     for obj in row["learning_objectives"]:
-                                        st.write(f"• {obj}")
+                                        st.write(f"✓ {obj}")
 
+                                st.write("")  # spacing
+                                
                                 col_book, col_unfav = st.columns(2)
                                 with col_book:
-                                    st.button("Book Now", key=f"fav_btn_{r_num}")
+                                    st.button(
+                                        "📚 Book Now",
+                                        key=f"fav_btn_{r_num}",
+                                        type="primary",
+                                        use_container_width=True,
+                                    )
                                 with col_unfav:
                                     if st.button(
                                         "💔",
                                         key=f"unfav_{r_num}",
                                         help="Remove from favorites",
+                                        use_container_width=True,
                                     ):
                                         st.session_state.favorites.remove(
                                             row["class_id"]
                                         )
                                         st.rerun()
-                            st.divider()
+                        
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        st.write("")  # spacing between cards
                 else:
-                    st.info(
-                        "You haven't added any favorites yet. Browse the Discovery Gallery and click the ⭐ button to save courses!"
+                    st.markdown(
+                        """
+                        <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                            <h2>💫 No favorites yet!</h2>
+                            <p style="font-size: 1.1rem; color: #666; margin-top: 20px;">
+                                Browse the Discovery Gallery and click the ⭐ button to save courses you love!
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
                     )
 
             elif view_mode == "Discovery Gallery":
-                st.title("School of Dandori")
-                st.write(f"Showing **{len(filtered_df)}** whimsical classes.")
-                st.divider()
+                # Enhanced header
+                st.markdown(
+                    f"""
+                    <div class="main-header">
+                        <h1>🎓 School of Dandori</h1>
+                        <p style="font-size: 1.1rem; margin-top: 10px;">Discover Your Next Whimsical Adventure</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                
+                st.markdown(
+                    f'<div class="stats-badge">📚 Showing {len(filtered_df)} magical classes</div>',
+                    unsafe_allow_html=True,
+                )
+                st.write("")  # spacing
 
                 items_per_page = 20
 
@@ -428,14 +617,19 @@ def main():
 
                 # Add a page selector at the top (and bottom)
                 if total_pages > 1:
-                    current_page = st.number_input(
-                        f"Page (1 of {total_pages})",
-                        min_value=1,
-                        max_value=total_pages,
-                        step=1,
-                    )
+                    col_page1, col_page2, col_page3 = st.columns([1, 2, 1])
+                    with col_page2:
+                        current_page = st.number_input(
+                            f"📄 Page (1-{total_pages})",
+                            min_value=1,
+                            max_value=total_pages,
+                            step=1,
+                            label_visibility="visible",
+                        )
                 else:
                     current_page = 1
+                
+                st.write("")  # spacing
 
                 # Calculate start and end indices for the current page
                 start_idx = (current_page - 1) * items_per_page
@@ -444,23 +638,46 @@ def main():
                 # Slice the dataframe for the current page
                 page_df = filtered_df.iloc[start_idx:end_idx]
 
+                # Check if there are any results
+                if len(filtered_df) == 0:
+                    st.markdown(
+                        """
+                        <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                            <h2>🔍 No courses found</h2>
+                            <p style="font-size: 1.1rem; color: #666; margin-top: 20px;">
+                                Try adjusting your filters or search terms to discover more courses!
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    st.stop()
+
                 for r_num, row in page_df.iterrows():
+                    # Wrap each course in a styled container
+                    st.markdown('<div class="course-card">', unsafe_allow_html=True)
+                    
                     with st.container():
                         col1, col2 = st.columns([2, 1])
                         with col1:
-                            st.subheader(row["course_name"])
-                            st.write(
-                                f"📍 **{row['location']}** | 👤 **{row['instructor']}**"
+                            st.markdown(f"### {row['course_name']}")
+                            st.markdown(
+                                f'<span class="info-badge">📍 {row["location"]}</span>'
+                                f'<span class="info-badge">👤 {row["instructor"]}</span>',
+                                unsafe_allow_html=True,
                             )
+                            st.write("")  # spacing
+                            
                             desc = row["course_description"]
                             if len(desc) > 150:
                                 st.write(f"{desc[:150]}...")
-                                with st.expander("Read full description"):
+                                with st.expander("📖 Read full description"):
                                     st.write(desc)
                             else:
                                 st.write(desc)
 
-                            st.write("**Skills:**")
+                            st.write("")  # spacing
+                            st.markdown("**🎯 Skills You'll Develop:**")
                             skill_cols = st.columns(
                                 min(len(row["skills_developed"]), 5)
                             )
@@ -490,10 +707,14 @@ def main():
                                 f'<p class="price-badge">£{row["cost"]:.2f}</p>',
                                 unsafe_allow_html=True,
                             )
-                            with st.expander("Learning Objectives"):
+                            st.write("")  # spacing
+                            
+                            with st.expander("🎯 Learning Objectives"):
                                 for obj in row["learning_objectives"]:
-                                    st.write(f"• {obj}")
+                                    st.write(f"✓ {obj}")
 
+                            st.write("")  # spacing
+                            
                             # Favorite button and Book button
                             col_fav, col_book = st.columns([1, 2])
                             with col_fav:
@@ -504,9 +725,9 @@ def main():
                                     "⭐" if is_favorite else "☆",
                                     key=f"fav_toggle_{r_num}",
                                     help=(
-                                        "Add to favorites"
-                                        if not is_favorite
-                                        else "Remove from favorites"
+                                        "Remove from favorites"
+                                        if is_favorite
+                                        else "Add to favorites"
                                     ),
                                     use_container_width=True,
                                 ):
@@ -521,13 +742,24 @@ def main():
                                     st.rerun()
                             with col_book:
                                 st.button(
-                                    "Book Now",
+                                    "📚 Book Now",
                                     key=f"btn_{r_num}",
                                     use_container_width=True,
+                                    type="primary",
                                 )
-                        st.divider()
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    st.write("")  # spacing between cards
             else:
-                st.title("Admin Data View")
+                st.markdown(
+                    """
+                    <div class="main-header">
+                        <h1>📊 Admin Data View</h1>
+                        <p style="font-size: 1.1rem; margin-top: 10px;">Complete course data table</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
                 display_df = filtered_df[
                     [
                         "course_name",
@@ -562,8 +794,15 @@ def main():
                 )
 
         with tab_ai:
-            st.title("🤖 Chat with Arthur's Assistant")
-            st.write("Ask me anything about our curriculum!")
+            st.markdown(
+                """
+                <div class="main-header">
+                    <h1>🤖 Chat with Dandori Assistant</h1>
+                    <p style="font-size: 1.1rem; margin-top: 10px;">Ask me anything about our whimsical curriculum!</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             # Display chat history
             for message in st.session_state.messages:
