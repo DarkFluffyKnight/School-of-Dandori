@@ -492,7 +492,7 @@ def main():
 
                     for r_num, row in favorites_df.iterrows():
                         st.markdown('<div class="course-card">', unsafe_allow_html=True)
-                        
+
                         with st.container():
                             col1, col2 = st.columns([2, 1])
                             with col1:
@@ -503,7 +503,7 @@ def main():
                                     unsafe_allow_html=True,
                                 )
                                 st.write("")  # spacing
-                                
+
                                 desc = row["course_description"]
                                 if len(desc) > 150:
                                     st.write(f"{desc[:150]}...")
@@ -548,13 +548,13 @@ def main():
                                     unsafe_allow_html=True,
                                 )
                                 st.write("")  # spacing
-                                
+
                                 with st.expander("🎯 Learning Objectives"):
                                     for obj in row["learning_objectives"]:
                                         st.write(f"✓ {obj}")
 
                                 st.write("")  # spacing
-                                
+
                                 col_book, col_unfav = st.columns(2)
                                 with col_book:
                                     st.button(
@@ -574,8 +574,8 @@ def main():
                                             row["class_id"]
                                         )
                                         st.rerun()
-                        
-                        st.markdown('</div>', unsafe_allow_html=True)
+
+                        st.markdown("</div>", unsafe_allow_html=True)
                         st.write("")  # spacing between cards
                 else:
                     st.markdown(
@@ -601,7 +601,7 @@ def main():
                     """,
                     unsafe_allow_html=True,
                 )
-                
+
                 st.markdown(
                     f'<div class="stats-badge">📚 Showing {len(filtered_df)} magical classes</div>',
                     unsafe_allow_html=True,
@@ -628,7 +628,7 @@ def main():
                         )
                 else:
                     current_page = 1
-                
+
                 st.write("")  # spacing
 
                 # Calculate start and end indices for the current page
@@ -656,7 +656,7 @@ def main():
                 for r_num, row in page_df.iterrows():
                     # Wrap each course in a styled container
                     st.markdown('<div class="course-card">', unsafe_allow_html=True)
-                    
+
                     with st.container():
                         col1, col2 = st.columns([2, 1])
                         with col1:
@@ -667,7 +667,7 @@ def main():
                                 unsafe_allow_html=True,
                             )
                             st.write("")  # spacing
-                            
+
                             desc = row["course_description"]
                             if len(desc) > 150:
                                 st.write(f"{desc[:150]}...")
@@ -708,13 +708,13 @@ def main():
                                 unsafe_allow_html=True,
                             )
                             st.write("")  # spacing
-                            
+
                             with st.expander("🎯 Learning Objectives"):
                                 for obj in row["learning_objectives"]:
                                     st.write(f"✓ {obj}")
 
                             st.write("")  # spacing
-                            
+
                             # Favorite button and Book button
                             col_fav, col_book = st.columns([1, 2])
                             with col_fav:
@@ -747,8 +747,8 @@ def main():
                                     use_container_width=True,
                                     type="primary",
                                 )
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    st.markdown("</div>", unsafe_allow_html=True)
                     st.write("")  # spacing between cards
             else:
                 st.markdown(
@@ -818,14 +818,14 @@ def main():
 
                 with st.spinner("Thinking..."):
                     # response = get_chatbot_response(prompt, df)
-                    response = rag.query_llm_with_rag(
-                        chat_client=st.session_state.chat_client,
-                        collection_name="pdf_data",
-                        collection=st.session_state.collection,
-                        query=prompt,
-                        history=st.session_state.messages,
-                        system_prompt=rag_system_prompt,
-                    )
+                    # response = rag.query_llm_with_rag(
+                    #     chat_client=st.session_state.chat_client,
+                    #     collection_name="pdf_data",
+                    #     collection=st.session_state.collection,
+                    #     query=prompt,
+                    #     history=st.session_state.messages,
+                    #     system_prompt=rag_system_prompt,
+                    # )
                     # response = rag.query_llm_with_rag(
                     #     chat_client=st.session_state.chat_client,
                     #     collection_name="pdf_data",
@@ -834,12 +834,12 @@ def main():
                     #     history=st.session_state.messages,
                     # )
 
-                    # response = rag.query_gemini_with_rag(
-                    #     chat=st.session_state.chat,
-                    #     collection_name="pdf_data",
-                    #     collection=st.session_state.collection,
-                    #     query=prompt,
-                    # )
+                    response = rag.query_gemini_with_rag(
+                        chat=st.session_state.chat,
+                        collection_name="pdf_data",
+                        collection=st.session_state.collection,
+                        query=prompt,
+                    )
 
                 # print("-" * 50)
                 # print("-" * 50)

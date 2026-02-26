@@ -1,2 +1,4 @@
 .env
 .pyc
+/utils/__pycache__
+/chroma_db
