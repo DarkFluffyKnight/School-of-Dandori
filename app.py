@@ -74,132 +74,164 @@ if "chat_client" not in st.session_state:
 # Enhanced Visual Styling
 st.markdown(
     """
-    <style>
-    /* Main app styling */
-    .main {
-        background-color: #fafbfc;
-    }
-    
-    /* Skill tags */
-    .skill-tag {
-        display: inline-block;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 6px 14px;
-        border-radius: 20px;
-        margin: 3px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-    }
-    .skill-tag:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-    
-    /* Price badge */
-    .price-badge {
-        font-size: 1.8rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    
-    /* Course card container */
-    .course-card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-        border-left: 4px solid #667eea;
-    }
-    .course-card:hover {
-        box-shadow: 0 8px 16px rgba(0,0,0,0.12);
-        transform: translateY(-2px);
-    }
-    
-    /* Header styling */
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 30px;
-        border-radius: 12px;
-        margin-bottom: 30px;
-        text-align: center;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-    
-    /* Stats badge */
-    .stats-badge {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        display: inline-block;
-        font-weight: 600;
-        margin: 10px 0;
-    }
-    
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-    }
-    [data-testid="stSidebar"] * {
-        color: white !important;
-    }
-    
-    /* Button enhancements */
-    .stButton>button {
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-    
-    /* Divider styling */
-    hr {
-        margin: 20px 0;
-        border: none;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, #667eea, transparent);
-    }
-    
-    /* Chat message styling */
-    .stChatMessage {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin: 10px 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    }
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background-color: #f0f4f8;
-        border-radius: 8px;
-        font-weight: 600;
-    }
-    
-    /* Location and instructor badges */
-    .info-badge {
-        background: #e3f2fd;
-        color: #1565c0;
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        display: inline-block;
-        margin-right: 8px;
-    }
-    </style>
+  <style>
+/* Main app styling */
+.main {
+    background-color: #fafbfc;
+}
+
+/* Skill tags */
+.skill-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin: 3px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+.skill-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Price badge */
+.price-badge {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Course card container */
+.course-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border-left: 4px solid #667eea;
+}
+.course-card:hover {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+/* Header styling */
+.main-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Stats badge */
+.stats-badge {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: 600;
+    margin: 10px 0;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Sidebar labels and text (but NOT input fields or buttons) */
+[data-testid="stSidebar"] .stMarkdown,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] p:not(button p) {
+    color: white !important;
+}
+
+/* Sidebar labels - but exclude button labels */
+[data-testid="stSidebar"] label:not(button label) {
+    color: white !important;
+}
+
+/* Keep input text dark so it's visible */
+[data-testid="stSidebar"] input {
+    color: #333333 !important;
+    background-color: white !important;
+}
+
+/* Keep multiselect text dark */
+[data-testid="stSidebar"] .stMultiSelect div[data-baseweb="select"] {
+    color: #333333 !important;
+}
+
+/* Keep button text dark - MOST SPECIFIC */
+[data-testid="stSidebar"] button,
+[data-testid="stSidebar"] button p,
+[data-testid="stSidebar"] button div,
+[data-testid="stSidebar"] button span,
+[data-testid="stSidebar"] .stButton button,
+[data-testid="stSidebar"] .stButton button * {
+    color: #333333 !important;
+}
+
+/* Button enhancements */
+.stButton>button {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+.stButton>button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Divider styling */
+hr {
+    margin: 20px 0;
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #667eea, transparent);
+}
+
+/* Chat message styling */
+.stChatMessage {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin: 10px 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Expander styling */
+.streamlit-expanderHeader {
+    background-color: #f0f4f8;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* Location and instructor badges */
+.info-badge {
+    background: #e3f2fd;
+    color: #1565c0;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-block;
+    margin-right: 8px;
+}
+</style>
 """,
     unsafe_allow_html=True,
 )
@@ -276,7 +308,7 @@ def main():
             st.session_state.messages = []
         if "favorites" not in st.session_state:
             st.session_state.favorites = []
-        if "search_query" not in st.session_state:
+        if "search_query_input" not in st.session_state:
             st.session_state.search_query = ""
         if "price_range" not in st.session_state:
             st.session_state.price_range = (
@@ -320,10 +352,6 @@ def main():
         st.sidebar.divider()
 
         st.sidebar.subheader("Filter Your Search")
-
-        # Initialize search_query_input in session state if not exists
-        if "search_query_input" not in st.session_state:
-            st.session_state.search_query_input = ""
 
         search_query = st.sidebar.text_input(
             "Search keywords:", key="search_query_input"
