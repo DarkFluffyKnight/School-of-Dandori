@@ -301,7 +301,7 @@ def main():
         if "favorites" not in st.session_state:
             st.session_state.favorites = []
         if "search_query_input" not in st.session_state:
-            st.session_state.search_query = ""
+            st.session_state.search_query_input = ""
         if "price_range" not in st.session_state:
             st.session_state.price_range = (
                 float(df["cost"].min()),
